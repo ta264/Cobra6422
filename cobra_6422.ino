@@ -12,6 +12,8 @@ OneWire net(2);
 
 const int KEY_ADDR = 0x28;
 
+uint16_t keys[4][3];
+
 void writeKey(int n, uint16_t key[])
 {
   ME.writeEnable();
