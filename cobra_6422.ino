@@ -103,7 +103,7 @@ int readNewTouchKey(int key) {
     if (Serial.available() > 0 && Serial.readString()[0] == '1')
       return 2;
     net.reset_search();
-    delay(1000);
+    delay(100);
   }
 
   if (OneWire::crc8(addr, 7) != addr[7]) {
@@ -143,6 +143,7 @@ void readNewKeys()
     int result = readNewTouchKey(i);
     if (result == 2) break;
     if (result == 1) i--;
+    delay(2000);
   }
 
   Serial.println("\n\New Keys:");
