@@ -51,8 +51,6 @@ MicrowireEEPROM::MicrowireEEPROM(int cs_pin, int clk_pin, int di_pin, int do_pin
 
 MicrowireEEPROM::~MicrowireEEPROM()
 {
-  Serial.println("calling destructor");
-
   // set outputs back to input
   pinMode(CS, INPUT);
   pinMode(CLK, INPUT);
