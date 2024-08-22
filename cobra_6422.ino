@@ -4,33 +4,21 @@
 // Microwire needs four wires (apart from VCC/GND) DO,DI,CS,CLK
 // configure them here, note that DO and DI are the pins of the
 // EEPROM, so DI is an output of the uC, while DO is an input
-int pCS=12; int pCLK=13; int pDI=11; int pDO=10;
-MicrowireEEPROM ME(pCS, pCLK, pDI, pDO); 
+const int pCS = 12;
+const int pCLK = 13;
+const int pDI = 11;
+const int pDO = 10;
+const int pProg = 8;
 
-// on pin 2
-OneWire net(2);  
+// 1wire pin for reading touchkey
+const int pTouchKey = 2;
+OneWire net(pTouchKey); 
 
-const int KEY_ADDR = 0x28;
-
+// array to store touchkey Ids
 uint16_t keys[4][3];
 
-void writeKey(int n, uint16_t key[])
-{
-  ME.writeEnable();
-  int addr = KEY_ADDR + (n * 3);
-  for (int i = 0; i < 3; i++)
-  {
-    Serial.print("Writing address: ");
-    Serial.print(addr + i, HEX);
-    Serial.print(" data: ");
-    Serial.print(key[i], HEX);
-    Serial.print("\n");
-
-    ME.write(addr + i, key[i]);
-  }
-    
-  ME.writeDisable();
-}
+// start address of keys in 6422
+const int KEY_ADDR = 0x28;
 
 void setup() {
   Serial.begin(9600);
@@ -38,6 +26,8 @@ void setup() {
 
 void dumpMemory()
 {
+  MicrowireEEPROM ME(pCS, pCLK, pDI, pDO, pProg);
+
   for (int addr=0; addr < 64; addr++)
   {
     // read the value back
@@ -52,6 +42,9 @@ void dumpMemory()
 
 void readExistingKeys()
 {
+  
+  MicrowireEEPROM ME(pCS, pCLK, pDI, pDO, pProg);
+
   for (int key = 0; key < 4; key++)
   {
     int addr = KEY_ADDR + (key * 3);
@@ -59,8 +52,8 @@ void readExistingKeys()
       keys[key][i] = ME.read(addr + i);
   }
 
-    Serial.println("\n\nExisting Keys:");
-    for (int i = 0; i < 4; i++) printKey(i);
+  Serial.println("\n\nExisting Keys:");
+  for (int i = 0; i < 4; i++) printKey(i);
 }
 
 void printKey(int n)
@@ -80,8 +73,28 @@ void printKey(int n)
 
 void writeKeys()
 {
+  MicrowireEEPROM ME(pCS, pCLK, pDI, pDO, pProg);
+  ME.writeEnable();
+
   for (int i = 0; i < 4; i++)
-    writeKey(i, keys[i]);
+    writeKey(ME, i, keys[i]);
+
+  ME.writeDisable();
+}
+
+void writeKey(MicrowireEEPROM ME, int n, uint16_t key[])
+{
+  int addr = KEY_ADDR + (n * 3);
+  for (int i = 0; i < 3; i++)
+  {
+    Serial.print("Writing address: ");
+    Serial.print(addr + i, HEX);
+    Serial.print(" data: ");
+    Serial.print(key[i], HEX);
+    Serial.print("\n");
+
+    ME.write(addr + i, key[i]);
+  }
 }
 
 int readNewTouchKey(int key) {

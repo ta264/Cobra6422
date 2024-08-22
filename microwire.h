@@ -7,6 +7,7 @@ class MicrowireEEPROM {
   int CLK;
   int DI;
   int DO;
+  int PROG;
 
   // an EEPROM can have a varying pagesize, usually 8 or 16 bit per page
   const int PAGESIZE = 16;
@@ -19,19 +20,21 @@ class MicrowireEEPROM {
   void send_opcode(char op);
 
   public:
-  MicrowireEEPROM(int cs_pin, int clk_pin, int di_pin, int do_pin);
+  MicrowireEEPROM(int cs_pin, int clk_pin, int di_pin, int do_pin, int prog_pin);
+  ~MicrowireEEPROM();
   uint16_t read(int addr);
   void writeEnable(void);
   void writeDisable(void);
   void write(int addr, uint16_t data);
 };
 
-MicrowireEEPROM::MicrowireEEPROM(int cs_pin, int clk_pin, int di_pin, int do_pin)
+MicrowireEEPROM::MicrowireEEPROM(int cs_pin, int clk_pin, int di_pin, int do_pin, int prog_pin)
 {
   this->CS = cs_pin;
   this->CLK = clk_pin;
   this->DI = di_pin;
   this->DO = do_pin;
+  this->PROG = prog_pin;
 
   // make CS, CLK, DI outputs
   pinMode(CS, OUTPUT);
@@ -40,6 +43,21 @@ MicrowireEEPROM::MicrowireEEPROM(int cs_pin, int clk_pin, int di_pin, int do_pin
   
   // make DO an input
   pinMode(DO, INPUT);
+
+  // put the cobra into programming mode
+  digitalWrite(PROG, LOW);
+  pinMode(PROG, OUTPUT);
+}
+
+MicrowireEEPROM::~MicrowireEEPROM()
+{
+  Serial.println("calling destructor");
+
+  // set outputs back to input
+  pinMode(CS, INPUT);
+  pinMode(CLK, INPUT);
+  pinMode(DI, INPUT);
+  pinMode(PROG, INPUT);
 }
 
 uint16_t MicrowireEEPROM::transmit(uint16_t data, int bits)
