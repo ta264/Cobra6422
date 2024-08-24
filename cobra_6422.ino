@@ -42,7 +42,6 @@ void dumpMemory()
 
 void readExistingKeys()
 {
-  
   MicrowireEEPROM ME(pCS, pCLK, pDI, pDO, pProg);
 
   for (int key = 0; key < 4; key++)
@@ -76,25 +75,24 @@ void writeKeys()
   MicrowireEEPROM ME(pCS, pCLK, pDI, pDO, pProg);
   ME.writeEnable();
 
-  for (int i = 0; i < 4; i++)
-    writeKey(ME, i, keys[i]);
+  for (int key = 0; key < 4; key++)
+  {
+    int start = KEY_ADDR + (key * 3);
+    for (int i = 0; i < 3; i++)
+    {
+      int addr = start + i;
+      int data = keys[key][i];
+      Serial.print("Writing address: ");
+      Serial.print(addr, HEX);
+      Serial.print(" data: ");
+      Serial.print(data, HEX);
+      Serial.print("\n");
+
+      ME.write(addr, data);
+    }
+  }
 
   ME.writeDisable();
-}
-
-void writeKey(MicrowireEEPROM ME, int n, uint16_t key[])
-{
-  int addr = KEY_ADDR + (n * 3);
-  for (int i = 0; i < 3; i++)
-  {
-    Serial.print("Writing address: ");
-    Serial.print(addr + i, HEX);
-    Serial.print(" data: ");
-    Serial.print(key[i], HEX);
-    Serial.print("\n");
-
-    ME.write(addr + i, key[i]);
-  }
 }
 
 int readNewTouchKey(int key) {
