@@ -337,7 +337,7 @@ void readImmobiliserCode()
   // second element is the high half of immob
   data[1] = (immob >> 8);
   // the last two bytes are stored in addr 12
-  data[2] = (addr12 | 0x30) >> 4;
+  data[2] = (addr12 & 0x30) >> 4;
 
   Serial.print("Read immobiliser data ");
   Serial.print(data[0], HEX);
