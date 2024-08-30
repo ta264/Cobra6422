@@ -350,6 +350,53 @@ void readImmobiliserCode()
   Serial.println(code);
 }
 
+void writeImmobiliserCode()
+{
+  Serial.println("Enter immobiliser code:");
+  while (Serial.available() <= 0) {}
+  String answer = Serial.readString();
+  answer.trim();
+  int code = answer.toInt();
+
+  uint8_t data[3] = {0, 0, 0};
+  encode_arg1(code, data);
+
+  Serial.print("Encoded: ");
+  Serial.print(data[1], HEX);
+  Serial.print(data[0], HEX);
+  Serial.print(" ");
+  Serial.println(data[2], HEX);
+
+  Serial.print("New immobiliser code: ");
+  Serial.println(code);
+
+  MicrowireEEPROM ME(pCS, pCLK, pDI, pDO, pProg);
+
+  Serial.print("Current values: \n");
+  Serial.print("Addr 0x01: ");
+  Serial.println(ME.read(IMMOB_ADDR), HEX);
+  Serial.print("Addr 0x12: ");
+  Serial.println(ME.read(ADDR12), HEX);
+
+  uint16_t addr1 = (data[1] << 8) | data[0];
+  uint16_t addr12 =  (ME.read(ADDR12) & 0xffcf) | (data[2] << 4);
+  Serial.print("New values: \n");
+  Serial.print("Addr 0x01: ");
+  Serial.println(addr1, HEX);
+  Serial.print("Addr 0x12: ");
+  Serial.println(addr12, HEX);
+
+  if (okToWrite())
+  {    
+    ME.writeEnable();
+
+    ME.write(IMMOB_ADDR, addr1);
+    ME.write(ADDR12, addr12);
+
+    ME.writeDisable();
+  }
+}
+
 void recoverEEPROM()
 {
   MicrowireEEPROM ME(pCS, pCLK, pDI, pDO, pProg);
@@ -372,7 +419,8 @@ void loop()
   Serial.println("1) Dump memory.");
   Serial.println("2) Program touch keys.");
   Serial.println("3) Read stored immobiliser code.");
-  Serial.println("9) Recover EEPROM to safe values. [DANGER]");
+  Serial.println("4) Write immobiliser code.");
+  Serial.println("9) Recover EEPROM to a known good dump. [DANGER]");
 
   while (Serial.available() <= 0) {}
   String option = Serial.readString();
@@ -389,6 +437,9 @@ void loop()
       break;
     case '3':
       readImmobiliserCode();
+      break;
+    case '4':
+      writeImmobiliserCode();
       break;
     case '9':
       recoverEEPROM();
