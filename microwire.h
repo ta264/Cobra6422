@@ -119,4 +119,5 @@ void MicrowireEEPROM::write(int addr, uint16_t data)
   transmit(addr, ADDRWIDTH);
   transmit(data, PAGESIZE);
   digitalWrite(CS, LOW);
+  delay(250);
 }

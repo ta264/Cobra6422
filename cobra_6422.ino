@@ -332,6 +332,12 @@ void readImmobiliserCode()
   uint16_t immob = ME.read(IMMOB_ADDR);
   uint16_t addr12 = ME.read(ADDR12);
 
+  Serial.print("Current immobiliser data: \n");
+  Serial.print("Addr 0x01: ");
+  Serial.println(immob, HEX);
+  Serial.print("Addr 0x12: ");
+  Serial.println(addr12, HEX);
+
   // first element of data is the low half of immob
   data[0] = immob & 0xff;
   // second element is the high half of immob
@@ -339,25 +345,13 @@ void readImmobiliserCode()
   // the last two bytes are stored in addr 12
   data[2] = (addr12 & 0x30) >> 4;
 
-  Serial.print("Read immobiliser data ");
-  Serial.print(data[0], HEX);
-  Serial.print(data[1], HEX);
-  Serial.print(" ");
-  Serial.println(data[2], HEX);
-
   int32_t code = decode_result(data);
-  Serial.print("Current paired immobiliser is: ");
+  Serial.print("Current paired immobiliser code is: ");
   Serial.println(code);
 }
 
-void writeImmobiliserCode()
+void getNewImmobiliserData(int code, uint16_t memory[])
 {
-  Serial.println("Enter immobiliser code:");
-  while (Serial.available() <= 0) {}
-  String answer = Serial.readString();
-  answer.trim();
-  int code = answer.toInt();
-
   uint8_t data[3] = {0, 0, 0};
   encode_arg1(code, data);
 
@@ -372,26 +366,33 @@ void writeImmobiliserCode()
 
   MicrowireEEPROM ME(pCS, pCLK, pDI, pDO, pProg);
 
-  Serial.print("Current values: \n");
-  Serial.print("Addr 0x01: ");
-  Serial.println(ME.read(IMMOB_ADDR), HEX);
-  Serial.print("Addr 0x12: ");
-  Serial.println(ME.read(ADDR12), HEX);
-
-  uint16_t addr1 = (data[1] << 8) | data[0];
-  uint16_t addr12 =  (ME.read(ADDR12) & 0xffcf) | (data[2] << 4);
+  memory[0] = (data[1] << 8) | data[0];
+  memory[1] =  (ME.read(ADDR12) & 0xffcf) | (data[2] << 4);
   Serial.print("New values: \n");
   Serial.print("Addr 0x01: ");
-  Serial.println(addr1, HEX);
+  Serial.println(memory[0], HEX);
   Serial.print("Addr 0x12: ");
-  Serial.println(addr12, HEX);
+  Serial.println(memory[1], HEX);
+}
+
+void writeImmobiliserCode()
+{
+  Serial.println("Enter new immobiliser code:");
+  while (Serial.available() <= 0) {}
+  String answer = Serial.readString();
+  answer.trim();
+  int code = answer.toInt();
+
+  uint16_t data[2];
+  getNewImmobiliserData(code, data);
 
   if (okToWrite())
-  {    
+  {
+    MicrowireEEPROM ME(pCS, pCLK, pDI, pDO, pProg);
     ME.writeEnable();
 
-    ME.write(IMMOB_ADDR, addr1);
-    ME.write(ADDR12, addr12);
+    ME.write(IMMOB_ADDR, data[0]);
+    ME.write(ADDR12, data[1]);
 
     ME.writeDisable();
   }
@@ -407,7 +408,6 @@ void recoverEEPROM()
   {
     ME.write(addr, eeprom[addr]);
     Serial.println(addr);
-    delay(100);
   }
 
   ME.writeDisable();
