@@ -86,7 +86,7 @@ void readExistingKeys()
 void printKey(int n)
 {
   Serial.print("Key ");
-  Serial.print(n);
+  Serial.print(n + 1);
   Serial.print(": ");
   
   for (int i = 0; i < 3; i++)
@@ -135,8 +135,6 @@ void writeKeys(int keyCount)
 int readNewTouchKey(int key) {
   byte addr[8];
   while (!net.search(addr)) {
-    if (Serial.available() > 0 && Serial.readString()[0] == '1')
-      return 2;
     net.reset_search();
     delay(100);
   }
@@ -168,8 +166,9 @@ int getKeyCount()
 {
   Serial.println("How many keys do you want to code?");
   while (Serial.available() <= 0) {}
-  int answer = Serial.parseInt();
-  return min(max(answer, 0), 4);
+  String answer = Serial.readString();
+  answer.trim();
+  return min(max(answer.toInt(), 0), 4);
 }
 
 int readNewKeys()
@@ -185,7 +184,6 @@ int readNewKeys()
     Serial.print(i + 1);
     Serial.println(" to reader");
     int result = readNewTouchKey(i);
-    if (result == 2) break;
     if (result == 1) i--;
     delay(2000);
   }
