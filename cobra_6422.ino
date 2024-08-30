@@ -15,10 +15,17 @@ const int pTouchKey = 2;
 OneWire net(pTouchKey); 
 
 // array to store touchkey Ids
+int keyCount = 0;
 uint16_t keys[4][3];
 
 // start address of keys in 6422
 const int KEY_ADDR = 0x28;
+
+// stores part of immob code and also key count
+const int ADDR12 = 0x12;
+
+// stores most of immob code
+const int IMMOB_ADDR = 0x01;
 
 void setup() {
   Serial.begin(9600);
@@ -40,19 +47,28 @@ void dumpMemory()
   }
 }
 
+int getKeyCount(uint16_t addr12)
+{
+  return ((addr12 & 0xff) >> 6) + 1;
+}
+
 void readExistingKeys()
 {
   MicrowireEEPROM ME(pCS, pCLK, pDI, pDO, pProg);
 
-  for (int key = 0; key < 4; key++)
+  int keyCount = getKeyCount(ME.read(ADDR12));
+
+  for (int key = 0; key < keyCount; key++)
   {
     int addr = KEY_ADDR + (key * 3);
     for (int i = 0; i < 3; i++)
       keys[key][i] = ME.read(addr + i);
   }
 
-  Serial.println("\n\nExisting Keys:");
-  for (int i = 0; i < 4; i++) printKey(i);
+  Serial.println("\n");
+  Serial.print(keyCount);
+  Serial.println(" existing Keys:");
+  for (int i = 0; i < keyCount; i++) printKey(i);
 }
 
 void printKey(int n)
@@ -70,10 +86,19 @@ void printKey(int n)
   Serial.print("\n");
 }
 
-void writeKeys()
+uint16_t encodeKeyCount(uint16_t addr12, uint16_t keyCount)
+{
+  if (keyCount == 0)
+    keyCount++;
+  return (addr12 & 0xff3f) | ((keyCount - 1) << 6);
+}
+
+void writeKeys(int keyCount)
 {
   MicrowireEEPROM ME(pCS, pCLK, pDI, pDO, pProg);
+
   ME.writeEnable();
+  ME.write(ADDR12, encodeKeyCount(ME.read(ADDR12), keyCount));
 
   for (int key = 0; key < 4; key++)
   {
@@ -127,17 +152,26 @@ int readNewTouchKey(int key) {
   return 0;
 }
 
-void readNewKeys()
+int getKeyCount()
 {
-  for (int key = 0; key < 4; key++)
+  Serial.println("How many keys do you want to code?");
+  while (Serial.available() <= 0) {}
+  int answer = Serial.parseInt();
+  return min(max(answer, 0), 4);
+}
+
+int readNewKeys()
+{
+  int keyCount = getKeyCount();
+  for (int key = 0; key < keyCount; key++)
     for (int i = 0; i < 3; i++)
       keys[key][i] = 0;
   
-  for (int i = 0; i < 4; i++)
+  for (int i = 0; i < keyCount; i++)
   {
     Serial.print("Touch key ");
     Serial.print(i + 1);
-    Serial.println(" to reader or type 1 to finish reading keys");
+    Serial.println(" to reader");
     int result = readNewTouchKey(i);
     if (result == 2) break;
     if (result == 1) i--;
@@ -145,7 +179,9 @@ void readNewKeys()
   }
 
   Serial.println("\n\New Keys:");
-    for (int i = 0; i < 4; i++) printKey(i);
+    for (int i = 0; i < keyCount; i++) printKey(i);
+
+  return keyCount;
 }
 
 bool okToWrite()
@@ -165,9 +201,9 @@ bool okToWrite()
 void programKeys()
 {
   readExistingKeys();
-  readNewKeys();
+  int keyCount = readNewKeys();
   if (okToWrite())
-    writeKeys();
+    writeKeys(keyCount);
 }
 
 void loop()
