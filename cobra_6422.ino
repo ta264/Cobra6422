@@ -27,6 +27,18 @@ const int ADDR12 = 0x12;
 // stores most of immob code
 const int IMMOB_ADDR = 0x01;
 
+// a safe rom dump to recover to
+uint16_t eeprom[] = {
+    0x55E2, 0x0131, 0x2320, 0xFB6F, 0xB7E2, 0x84C6, 0x3A00, 0x2A0A, 
+    0x0202, 0x7838, 0x0505, 0x3800, 0x0909, 0x0900, 0x5074, 0x0218, 
+    0x6974, 0x0000, 0x0005, 0x481D, 0x7D29, 0x229A, 0xF5F6, 0x2DE8, 
+    0xB5C0, 0x2725, 0xF3F4, 0x5BD1, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 
+    0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x00B4, 
+    0xC26F, 0xFA02, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
+    0x0000, 0x0000, 0x0000, 0x0000, 0x0100, 0xFFFF, 0x0021, 0x5F91, 
+    0x0909, 0xFF3A, 0x3A00, 0x0000, 0x81F7, 0x7980, 0xFFFF, 0xFFFF
+};
+
 void setup() {
   Serial.begin(9600);
 }
@@ -206,11 +218,157 @@ void programKeys()
     writeKeys(keyCount);
 }
 
+// Function to encode arg1 into the result array
+void encode_arg1(int32_t arg1, uint8_t result[]) {
+  int32_t byte_index = 0;
+  int32_t bit_position = 0;
+  
+  // Modulo operation
+  arg1 = arg1 % 0x3342;
+  
+  while (arg1 != 0) {
+    uint32_t remainder = arg1 % 3;
+    char encoded_value;
+    
+    // Map remainder to encoded_value
+    if (remainder == 0)
+      encoded_value = 0;
+    else if (remainder == 1)
+      encoded_value = 3;
+    else if (remainder == 2)
+      encoded_value = 1;
+    
+    // Pack encoded_value into the appropriate byte in the result array
+    if (bit_position >= 0 && bit_position <= 3) {
+      switch (bit_position) {
+        case 0:
+          result[byte_index] = (result[byte_index] & 0xfc) | ((encoded_value & 3) & 3);
+          break;
+        case 1:
+          result[byte_index] = (result[byte_index] & 0xf3) | (((encoded_value & 3) << 2) & 0xc);
+          break;
+        case 2:
+          result[byte_index] = (result[byte_index] & 0xcf) | (((encoded_value & 3) << 4) & 0x30);
+          break;
+        case 3:
+          result[byte_index] = (result[byte_index] & 0x3f) | (((encoded_value & 3) << 6) & 0xc0);
+          break;
+      }
+    }
+    
+    // Update arg1 and bit_position
+    arg1 = arg1 / 3;
+    bit_position = (bit_position + 1) % 4;
+    
+    // Move to the next byte if bit_position loops back to 0
+    if (bit_position == 0)
+      byte_index += 1;
+  }
+}
+
+// Function to decode result array back into arg1
+int32_t decode_result(const uint8_t result[]) {
+  int32_t arg1 = 0;
+  int32_t multiplier = 1;
+  int32_t byte_index = 0;
+  int32_t bit_position = 0;
+  
+  while (byte_index < 3 && (byte_index != 3 || result[byte_index] != 0)) {
+    char extracted_value;
+    
+    // Extract the relevant bits from the current byte
+    if (bit_position >= 0 && bit_position <= 3) {
+      switch (bit_position) {
+        case 0:
+          extracted_value = result[byte_index] & 0x3;
+          break;
+        case 1:
+          extracted_value = (result[byte_index] >> 2) & 0x3;
+          break;
+        case 2:
+          extracted_value = (result[byte_index] >> 4) & 0x3;
+          break;
+        case 3:
+          extracted_value = (result[byte_index] >> 6) & 0x3;
+          break;
+      }
+    }
+    
+    // Map extracted_value back to its original modulo 3 result
+    int32_t remainder;
+    if (extracted_value == 0)
+      remainder = 0;
+    else if (extracted_value == 3)
+      remainder = 1;
+    else if (extracted_value == 1)
+      remainder = 2;
+    else
+      remainder = -1; // This shouldn't happen
+    
+    // Add the contribution of this part to arg1
+    arg1 += remainder * multiplier;
+    multiplier *= 3;
+    
+    // Update bit_position
+    bit_position = (bit_position + 1) % 4;
+    
+    // Move to the next byte if bit_position loops back to 0
+    if (bit_position == 0)
+      byte_index += 1;
+  }
+  
+  return arg1 + 0x3342;
+}
+
+void readImmobiliserCode()
+{
+  uint8_t data[3];
+  MicrowireEEPROM ME(pCS, pCLK, pDI, pDO, pProg);
+
+  uint16_t immob = ME.read(IMMOB_ADDR);
+  uint16_t addr12 = ME.read(ADDR12);
+
+  // first element of data is the low half of immob
+  data[0] = immob & 0xff;
+  // second element is the high half of immob
+  data[1] = (immob >> 8);
+  // the last two bytes are stored in addr 12
+  data[2] = (addr12 | 0x30) >> 4;
+
+  Serial.print("Read immobiliser data ");
+  Serial.print(data[0], HEX);
+  Serial.print(data[1], HEX);
+  Serial.print(" ");
+  Serial.println(data[2], HEX);
+
+  int32_t code = decode_result(data);
+  Serial.print("Current paired immobiliser is: ");
+  Serial.println(code);
+}
+
+void recoverEEPROM()
+{
+  MicrowireEEPROM ME(pCS, pCLK, pDI, pDO, pProg);
+
+  ME.writeEnable();
+
+  for (int addr = 0; addr < 64; addr++)
+  {
+    ME.write(addr, eeprom[addr]);
+    Serial.println(addr);
+    delay(100);
+  }
+
+  ME.writeDisable();
+}
+
 void loop()
 {
   Serial.println("Choose an option.");
   Serial.println("1) Dump memory.");
   Serial.println("2) Program touch keys.");
+  Serial.println("3) Read stored immobiliser code.");
+  Serial.println("9) Recover EEPROM to safe values. [DANGER]");
 
   while (Serial.available() <= 0) {}
   String option = Serial.readString();
@@ -224,6 +382,12 @@ void loop()
       break;
     case '2':
       programKeys();
+      break;
+    case '3':
+      readImmobiliserCode();
+      break;
+    case '9':
+      recoverEEPROM();
       break;
     default:
       Serial.println("Option not recognised.");

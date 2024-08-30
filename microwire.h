@@ -45,6 +45,7 @@ MicrowireEEPROM::MicrowireEEPROM(int cs_pin, int clk_pin, int di_pin, int do_pin
   pinMode(DO, INPUT);
 
   // put the cobra into programming mode
+  Serial.println("Entering programming mode.");
   digitalWrite(PROG, LOW);
   pinMode(PROG, OUTPUT);
 }
@@ -52,6 +53,7 @@ MicrowireEEPROM::MicrowireEEPROM(int cs_pin, int clk_pin, int di_pin, int do_pin
 MicrowireEEPROM::~MicrowireEEPROM()
 {
   // set outputs back to input
+  Serial.println("Exiting programming mode.");
   pinMode(CS, INPUT);
   pinMode(CLK, INPUT);
   pinMode(DI, INPUT);
