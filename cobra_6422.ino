@@ -41,6 +41,12 @@ uint16_t eeprom[] = {
 
 void setup() {
   Serial.begin(9600);
+
+  // Make sure nothing is yet in output mode (especially the prog pin)
+  pinMode(pCS, INPUT);
+  pinMode(pCLK, INPUT);
+  pinMode(pDI, INPUT);
+  pinMode(pProg, INPUT);
 }
 
 void dumpMemory()
