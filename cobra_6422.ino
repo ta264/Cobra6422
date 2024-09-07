@@ -9,6 +9,8 @@ const int pCLK = 13;
 const int pDI = 11;
 const int pDO = 10;
 const int pProg = 8;
+const int pCode = 5;
+const int pTest = 6;
 
 // 1wire pin for reading touchkey
 const int pTouchKey = 2;
@@ -26,6 +28,9 @@ const int ADDR12 = 0x12;
 
 // stores most of immob code
 const int IMMOB_ADDR = 0x01;
+
+// the maximum immobiliser code value, codes are computed modulo this number
+const int MAX_CODE = 0x3342;
 
 // a safe rom dump to recover to
 uint16_t eeprom[] = {
@@ -228,7 +233,7 @@ void encode_arg1(int32_t arg1, uint8_t result[]) {
   int32_t bit_position = 0;
   
   // Modulo operation
-  arg1 = arg1 % 0x3342;
+  arg1 = arg1 % MAX_CODE;
   
   while (arg1 != 0) {
     uint32_t remainder = arg1 % 3;
@@ -321,7 +326,7 @@ int32_t decode_result(const uint8_t result[]) {
       byte_index += 1;
   }
   
-  return arg1 + 0x3342;
+  return arg1 + MAX_CODE;
 }
 
 void readImmobiliserCode()
@@ -398,6 +403,90 @@ void writeImmobiliserCode()
   }
 }
 
+void getBits(uint8_t code[], bool bits[])
+{
+  for (int i = 0; i < 8; i++)
+  {
+    bits[i] = (code[0] >> i) & 1;
+  }
+  for (int i = 0; i < 8; i++)
+  {
+    bits[8 + i] = (code[1] >> i) & 1;
+  }
+  for (int i = 0; i < 2; i++)
+  {
+    bits[16 + i] = (code[2] >> i) & 1;
+  }
+}
+
+void emitCode(bool bits[])
+{
+  for (int i = 0; i < 18; i++)
+  {
+    if (bits[i])
+    {
+      digitalWrite(pCode, LOW);
+      delayMicroseconds(263); // measured 276, shortened by 13
+      digitalWrite(pCode, HIGH);
+      delayMicroseconds(77); // measured 88, shortened 5
+    }
+    else
+    {
+      digitalWrite(pCode, LOW);
+      delayMicroseconds(39); // measured 42, shortened 4
+      digitalWrite(pCode, HIGH);
+      delayMicroseconds(301); // measured 317, shortened 18
+    }
+  }
+}
+
+void bruteForce1984()
+{
+  digitalWrite(pCode, LOW);
+  pinMode(pCode, OUTPUT);
+
+  pinMode(pTest, INPUT_PULLUP);
+
+  Serial.println("Detecting code");
+  PinStatus test = digitalRead(pTest);
+  if (test == LOW)
+  {
+    Serial.println("Error: 1984 already mobilised.  Power cycle it and try again.");
+    return;
+  }
+
+  for (int32_t code = 0; code < MAX_CODE; code++)
+  {
+    // 131 is floor(MAX_CODE / 100)
+    if (code % 131 == 0)
+    {
+      Serial.print(code / 131);
+      Serial.println("%");
+    }
+
+    uint8_t data[3] = {0, 0, 0};
+    encode_arg1(code, data);
+
+    bool bits[18];
+    getBits(data, bits);
+
+    // the code needs to be sent 3 times for the 1984 to recognise it, with a 1ms delay between each
+    for (int p = 0; p < 3; p++) {
+      emitCode(bits);
+      delayMicroseconds(1000);
+    }
+
+    // check if the relay has activated
+    PinStatus test = digitalRead(pTest);
+    if (test == LOW)
+    {
+      Serial.print("Code is: ");
+      Serial.println((code % MAX_CODE) + MAX_CODE);
+      break;
+    }
+  }
+}
+
 void recoverEEPROM()
 {
   MicrowireEEPROM ME(pCS, pCLK, pDI, pDO, pProg);
@@ -418,8 +507,9 @@ void loop()
   Serial.println("Choose an option.");
   Serial.println("1) Dump memory.");
   Serial.println("2) Program touch keys.");
-  Serial.println("3) Read stored immobiliser code.");
-  Serial.println("4) Write immobiliser code.");
+  Serial.println("3) Read immobiliser code stored in 6422.");
+  Serial.println("4) Write immobiliser code to 6422.");
+  Serial.println("5) Extract immobiliser code from 1984 unit.");
   Serial.println("9) Recover EEPROM to a known good dump. [DANGER]");
 
   while (Serial.available() <= 0) {}
@@ -440,6 +530,9 @@ void loop()
       break;
     case '4':
       writeImmobiliserCode();
+      break;
+    case '5':
+      bruteForce1984();
       break;
     case '9':
       recoverEEPROM();
