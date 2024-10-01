@@ -1,6 +1,12 @@
 #include <OneWire.h>
 #include "microwire.h"
 
+// Check if PinStatus is not defined (i.e., for older boards like Uno R3)
+#if !defined(PinStatus) && !defined(ARDUINO_ARCH_RENESAS)
+// Define PinStatus for backwards compatibility
+typedef int PinStatus;
+#endif
+
 // Microwire needs four wires (apart from VCC/GND) DO,DI,CS,CLK
 // configure them here, note that DO and DI are the pins of the
 // EEPROM, so DI is an output of the uC, while DO is an input
