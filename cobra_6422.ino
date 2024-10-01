@@ -35,12 +35,15 @@ const uint16_t eeprom_safe[] = {
     0x0909, 0xFF3A, 0x3A00, 0x0000, 0x81F7, 0x7980, 0xFFFF, 0xFFFF
 };
 
-// Menu service read / write to perform initial read / 1984 brute force
+/*
+// Menu service read / write to perform initial read
 const char* MENU_SERVICE_UUID = "c9389729-1cdb-4ef2-9e15-0701e9e8dca6";
 const char* MENU_CHARACTERISTIC_UUID = "df5e3ea4-27c6-450d-8c7e-c5c791711b7b";
 
 BLEService menuService(MENU_SERVICE_UUID);
 BLEIntCharacteristic menuCharacteristic(MENU_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify);
+BLEDescriptor menuDescriptor("2901","Menu");
+*/
 
 // Touchkey service to read new touchkeys for writing to cobra
 //   Key read
@@ -49,6 +52,8 @@ const char* TOUCHKEY_READ_CHARACTERISTIC_UUID = "d55282ce-37ba-4be9-9194-26c89f4
 
 BLEService touchkeyService(TOUCHKEY_SERVICE_UUID);
 BLECharacteristic touchkeyReadCharacteristic(TOUCHKEY_READ_CHARACTERISTIC_UUID, BLERead | BLENotify, 8);
+BLEDescriptor touchkeyReadDescriptor("2901","Programmer Touchkey");
+
 uint8_t key[8];
 
 // 6422 service
@@ -56,14 +61,28 @@ uint8_t key[8];
 //   Keys read / write
 //   Immob code read / write
 const char* COBRA_6422_SERVICE_UUID = "4e4cabae-e1d9-44c4-94f4-d2c269d6093b";
+const char* C6422_STATUS_CHARACTERISTIC_UUID = "4d970ade-6239-4c88-9a1c-2c544df31034";
 const char* EEPROM_CHARACTERISTIC_UUID = "8d2d0e29-853d-4c21-929b-b1233e987c60";
 const char* TOUCHKEY_CHARACTERISTIC_UUID = "a755d6b7-1605-4eca-bf4c-73de844f82f8";
 const char* IMMOB_CHARACTERISTIC_UUID = "76a2563f-5759-4463-87fe-a684e8adcefa";
 
 BLEService cobra6422Service(COBRA_6422_SERVICE_UUID);
+BLEIntCharacteristic c6422StatusCharacteristic(C6422_STATUS_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify);
+BLEDescriptor c6422StatusDescriptor("2901","6422 Status");
 BLECharacteristic eepromCharacteristic(EEPROM_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify, 128);
+BLEDescriptor eepromDescriptor("2901","6422 EEPROM");
 BLECharacteristic cobraTouchkeyCharacteristic(TOUCHKEY_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify, 32);
+BLEDescriptor cobraTouchkeyDescriptor("2901","6422 Touchkeys");
 BLEIntCharacteristic immobCharacteristic(IMMOB_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify);
+BLEDescriptor immobDescriptor("2901","6422 Immobiliser Code");
+
+// 1984 service
+//   Trigger brute force / read back value
+const char* COBRA_1984_SERVICE_UUID = "eb3df65a-06e3-4a42-b790-73b5caea9dc9";
+const char* C1984_CODE_CHARACTERISTIC_UUID = "d0ca177f-e266-4554-9dbb-1a0ca97c90c4";
+BLEService cobra1984Service(COBRA_1984_SERVICE_UUID);
+BLEIntCharacteristic c1984CodeCharacteristic(C1984_CODE_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify);
+BLEDescriptor c1984CodeDescriptor("2901","1984 Immobiliser Code");
 
 void setup() {
   Serial.begin(9600);
@@ -85,22 +104,49 @@ void setup() {
   BLE.setEventHandler(BLEConnected, blePeripheralConnectHandler);
   BLE.setEventHandler(BLEDisconnected, blePeripheralDisconnectHandler);
 
+  /*
+  // Menu
   BLE.setAdvertisedService(menuService);
+  menuCharacteristic.addDescriptor(menuDescriptor);
   menuService.addCharacteristic(menuCharacteristic);
   BLE.addService(menuService);
   menuCharacteristic.writeValue(0);
   menuCharacteristic.setEventHandler(BLEWritten, menuWritten);
+  */
 
+  // Programmer touchkey
   BLE.setAdvertisedService(touchkeyService);
+  touchkeyReadCharacteristic.addDescriptor(touchkeyReadDescriptor);
   touchkeyService.addCharacteristic(touchkeyReadCharacteristic);
   BLE.addService(touchkeyService);
   
+  // 6422
   BLE.setAdvertisedService(cobra6422Service);
-  cobra6422Service.addCharacteristic(eepromCharacteristic);
+
+  c6422StatusCharacteristic.addDescriptor(c6422StatusDescriptor);
+  c6422StatusCharacteristic.writeValue(0);
+  c6422StatusCharacteristic.setEventHandler(BLEWritten, statusWritten);
+  
+  eepromCharacteristic.addDescriptor(eepromDescriptor);
+  cobraTouchkeyCharacteristic.addDescriptor(cobraTouchkeyDescriptor);
+  immobCharacteristic.addDescriptor(immobDescriptor);
+
+  cobra6422Service.addCharacteristic(c6422StatusCharacteristic);
+  cobra6422Service.addCharacteristic(eepromCharacteristic);  
   cobra6422Service.addCharacteristic(cobraTouchkeyCharacteristic);
   cobra6422Service.addCharacteristic(immobCharacteristic);
+  
   BLE.addService(cobra6422Service);
+  
 
+  // 1984
+  BLE.setAdvertisedService(cobra1984Service);
+  c1984CodeCharacteristic.addDescriptor(c1984CodeDescriptor);
+  c1984CodeCharacteristic.writeValue(0);
+  cobra1984Service.addCharacteristic(c1984CodeCharacteristic);
+
+  BLE.addService(cobra1984Service);
+  
   BLE.advertise();
 
   Serial.println("setup done");
@@ -148,25 +194,26 @@ void blePeripheralDisconnectHandler(BLEDevice central) {
   Serial.println(central.address());
 }
 
-void menuWritten(BLEDevice central, BLECharacteristic characteristic)
+void statusWritten(BLEDevice central, BLECharacteristic characteristic)
 {
-  Serial.print("Characteristic event, written: ");
-  int value = menuCharacteristic.value();
+  Serial.print("Detected status write: ");
+  int value = c6422StatusCharacteristic.value();
   Serial.println(value);
 
   switch(value)
   {
-    case 1:
+    case -1:
       c6422.read();
       updateData();
+      c6422StatusCharacteristic.writeValue(1);
       break;
   }
-
-  menuCharacteristic.writeValue(0);
+ 
 }
 
 void updateData()
 {
+  uint8_t eeprom[128];
   for (int addr = 0; addr < 64; addr++)
   {
     eeprom[addr * 2] = c6422.eeprom[addr] >> 8;
