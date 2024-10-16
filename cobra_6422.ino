@@ -115,14 +115,11 @@ void setup() {
   */
 
   // Programmer touchkey
-  BLE.setAdvertisedService(touchkeyService);
   touchkeyReadCharacteristic.addDescriptor(touchkeyReadDescriptor);
   touchkeyService.addCharacteristic(touchkeyReadCharacteristic);
   BLE.addService(touchkeyService);
   
   // 6422
-  BLE.setAdvertisedService(cobra6422Service);
-
   c6422StatusCharacteristic.addDescriptor(c6422StatusDescriptor);
   c6422StatusCharacteristic.writeValue(0);
   c6422StatusCharacteristic.setEventHandler(BLEWritten, statusWritten);
@@ -137,16 +134,15 @@ void setup() {
   cobra6422Service.addCharacteristic(immobCharacteristic);
   
   BLE.addService(cobra6422Service);
-  
 
   // 1984
-  BLE.setAdvertisedService(cobra1984Service);
   c1984CodeCharacteristic.addDescriptor(c1984CodeDescriptor);
   c1984CodeCharacteristic.writeValue(0);
   cobra1984Service.addCharacteristic(c1984CodeCharacteristic);
 
   BLE.addService(cobra1984Service);
-  
+
+  BLE.setAdvertisedService(cobra6422Service);
   BLE.advertise();
 
   Serial.println("setup done");
