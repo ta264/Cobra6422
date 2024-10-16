@@ -168,6 +168,7 @@ void readTouchKey() {
 
   if(!std::equal(std::begin(addr), std::end(addr), std::begin(key)))
   {
+    Serial.println("Read a new key");
     memcpy(key, addr, 8);
     touchkeyReadCharacteristic.writeValue(key, 8);
   }
