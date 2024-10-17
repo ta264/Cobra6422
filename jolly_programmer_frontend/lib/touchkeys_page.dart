@@ -123,7 +123,8 @@ class _TouchKeysPageState extends State<TouchKeysPage> {
             padding: const EdgeInsets.all(8.0),
             child: ElevatedButton(
               onPressed: () {
-                //widget.bleManager._writeToCharacteristic(); // Write operation triggered from BLEManager
+                widget.bleManager
+                    .touchkeyWrite(); // Write operation triggered from BLEManager
               },
               child: Text('Write'),
             ),

@@ -71,7 +71,7 @@ BLEIntCharacteristic c6422StatusCharacteristic(C6422_STATUS_CHARACTERISTIC_UUID,
 BLEDescriptor c6422StatusDescriptor("2901","6422 Status");
 BLECharacteristic eepromCharacteristic(EEPROM_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify, 128);
 BLEDescriptor eepromDescriptor("2901","6422 EEPROM");
-BLECharacteristic cobraTouchkeyCharacteristic(TOUCHKEY_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify, 32);
+BLECharacteristic cobraTouchkeyCharacteristic(TOUCHKEY_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify, 24);
 BLEDescriptor cobraTouchkeyDescriptor("2901","6422 Touchkeys");
 BLEIntCharacteristic immobCharacteristic(IMMOB_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify);
 BLEDescriptor immobDescriptor("2901","6422 Immobiliser Code");
@@ -116,6 +116,7 @@ void setup() {
 
   // Programmer touchkey
   touchkeyReadCharacteristic.addDescriptor(touchkeyReadDescriptor);
+  touchkeyReadCharacteristic.setEventHandler(BLEWritten, touchkeyWritten);
   touchkeyService.addCharacteristic(touchkeyReadCharacteristic);
   BLE.addService(touchkeyService);
   
@@ -199,13 +200,18 @@ void statusWritten(BLEDevice central, BLECharacteristic characteristic)
 
   switch(value)
   {
-    case -1:
+    case 1:
       c6422.read();
       updateData();
       c6422StatusCharacteristic.writeValue(1);
       break;
   }
- 
+}
+
+void touchkeyWritten(BLEDevice central, BLECharacteristic characteristic)
+{
+  Serial.print("Detected key write: ");
+
 }
 
 void updateData()
@@ -217,6 +223,20 @@ void updateData()
     eeprom[addr * 2 + 1] = c6422.eeprom[addr] % 0x100;
   }
   eepromCharacteristic.writeValue(eeprom, 128);
+
+  uint16_t keys[4][3];
+  c6422.readKeys(keys);
+
+  uint8_t keys8[4][6];
+  for (int key = 0; key < 4; key++)
+  {
+    for (int addr = 0; addr < 3; addr++)
+    {
+      keys8[key][addr * 2] = keys[key][addr] >> 8;
+      keys8[key][addr * 2 + 1] = keys[key][addr] % 0x100;
+    }
+  } 
+  cobraTouchkeyCharacteristic.writeValue(keys8, 24);
 
   immobCharacteristic.writeValue(c6422.getImmobiliserCode());
 }

@@ -73,6 +73,10 @@ void Cobra6422::readKeys(uint16_t keys[][3])
     for (int i = 0; i < 3; i++)
       keys[key][i] = eeprom[addr + i];
   }
+
+  for (int key = keyCount; key < 4; key++)
+    for (int i = 0; i < 3; i++)
+      keys[key][i] = 0;
 }
 
 void Cobra6422::writeKeys(int keyCount, uint16_t keys[][3])

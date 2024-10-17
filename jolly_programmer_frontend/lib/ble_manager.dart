@@ -122,6 +122,32 @@ class BLEManager {
     }
   }
 
+  // Write the most recent 4 touchkeys to the touchkey characteristic
+  Future<void> touchkeyWrite() async {
+    final String serviceUuid =
+        '7065ed39-77d1-48e6-8e7c-7227550243c3'; // Example service UUID for writing
+    final String characteristicUuid =
+        '12345678-1234-5678-1234-567812345678'; // Touchkey characteristic UUID for writing
+
+    BluetoothCharacteristic? characteristic =
+        _findCharacteristic(serviceUuid, characteristicUuid);
+
+    if (characteristic != null && characteristic.properties.write) {
+      // Flatten the most recent 4 touchkeys into a single list of integers
+      List<int> flattenedTouchKeys =
+          _touchKeys.expand((element) => element).toList();
+
+      if (flattenedTouchKeys.isNotEmpty) {
+        await characteristic.write(flattenedTouchKeys, withoutResponse: false);
+        print('Most recent 4 touchkeys written to characteristic');
+      } else {
+        print('No touchkeys available to write.');
+      }
+    } else {
+      print('Write not supported for this characteristic.');
+    }
+  }
+
   // Helper method to find a characteristic by UUID
   BluetoothCharacteristic? _findCharacteristic(
       String serviceUuid, String characteristicUuid) {
