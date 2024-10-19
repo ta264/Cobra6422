@@ -71,7 +71,7 @@ BLEIntCharacteristic c6422StatusCharacteristic(C6422_STATUS_CHARACTERISTIC_UUID,
 BLEDescriptor c6422StatusDescriptor("2901","6422 Status");
 BLECharacteristic eepromCharacteristic(EEPROM_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify, 128);
 BLEDescriptor eepromDescriptor("2901","6422 EEPROM");
-BLECharacteristic cobraTouchkeyCharacteristic(TOUCHKEY_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify, 24);
+BLECharacteristic cobraTouchkeyCharacteristic(TOUCHKEY_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify, 32);
 BLEDescriptor cobraTouchkeyDescriptor("2901","6422 Touchkeys");
 BLEIntCharacteristic immobCharacteristic(IMMOB_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify);
 BLEDescriptor immobDescriptor("2901","6422 Immobiliser Code");
@@ -116,7 +116,6 @@ void setup() {
 
   // Programmer touchkey
   touchkeyReadCharacteristic.addDescriptor(touchkeyReadDescriptor);
-  touchkeyReadCharacteristic.setEventHandler(BLEWritten, touchkeyWritten);
   touchkeyService.addCharacteristic(touchkeyReadCharacteristic);
   BLE.addService(touchkeyService);
   
@@ -124,9 +123,12 @@ void setup() {
   c6422StatusCharacteristic.addDescriptor(c6422StatusDescriptor);
   c6422StatusCharacteristic.writeValue(0);
   c6422StatusCharacteristic.setEventHandler(BLEWritten, statusWritten);
-  
-  eepromCharacteristic.addDescriptor(eepromDescriptor);
+
   cobraTouchkeyCharacteristic.addDescriptor(cobraTouchkeyDescriptor);
+  cobraTouchkeyCharacteristic.setEventHandler(BLESubscribed, updateDataHandler);
+  cobraTouchkeyCharacteristic.setEventHandler(BLEWritten, touchkeyWritten);
+
+  eepromCharacteristic.addDescriptor(eepromDescriptor);
   immobCharacteristic.addDescriptor(immobDescriptor);
 
   cobra6422Service.addCharacteristic(c6422StatusCharacteristic);
@@ -167,12 +169,7 @@ void readTouchKey() {
     return;
   }
 
-  if(!std::equal(std::begin(addr), std::end(addr), std::begin(key)))
-  {
-    Serial.println("Read a new key");
-    memcpy(key, addr, 8);
-    touchkeyReadCharacteristic.writeValue(key, 8);
-  }
+  touchkeyReadCharacteristic.writeValue(addr, 8);
 }
 
 void loop() {
@@ -190,6 +187,13 @@ void blePeripheralDisconnectHandler(BLEDevice central) {
   // central disconnected event handler
   Serial.print("Disconnected event, central: ");
   Serial.println(central.address());
+}
+
+void updateDataHandler(BLEDevice central, BLECharacteristic)
+{
+  Serial.println("Subscribed event");
+  c6422.read();
+  updateData();
 }
 
 void statusWritten(BLEDevice central, BLECharacteristic characteristic)
@@ -210,8 +214,53 @@ void statusWritten(BLEDevice central, BLECharacteristic characteristic)
 
 void touchkeyWritten(BLEDevice central, BLECharacteristic characteristic)
 {
-  Serial.print("Detected key write: ");
+  uint8_t buffer[32] = {0};
+  characteristic.readValue(buffer, sizeof(buffer));
 
+  // Counter to track position in the result array
+  uint16_t keys[4][3];
+  int row = 0;
+  int col = 0;
+  int keyCount = 0;
+
+  // Loop through the input array, omitting the 1st and 8th bytes
+  for (int i = 0; i < 32; ++i) {
+    // if first byte is 01 we have a key, if it's zero it's a blank
+    if (i % 8 == 0 && buffer[i] != 0) {
+      keyCount++;
+    }
+
+    // Omit the 1st and 8th bytes
+    if (i % 8 == 0 || i % 8 == 7) {
+      continue;
+    }
+
+    // Take pairs of bytes and combine them into uint16_t
+    if (i % 2 == 1) {  // Start from the 2nd byte, every odd index (i.e., pair of bytes)
+      keys[row][col] = (buffer[i] << 8) | buffer[i + 1]; // Combine two bytes
+      ++col;
+
+      if (col == 3) {
+        col = 0;
+        ++row;
+      }
+    }
+  }
+
+  Serial.println("Detected key write:");
+  Serial.println(keyCount);
+  for (int key = 0; key < keyCount; key++) {
+    for (int i = 0; i < 3; i++)
+    { 
+      Serial.print(keys[key][i], HEX);  // Print each byte in hex format
+    }
+    Serial.println();
+  }
+  Serial.println();
+
+  c6422.writeKeys(keyCount, keys);
+  c6422.read();
+  updateData();
 }
 
 void updateData()
@@ -227,16 +276,18 @@ void updateData()
   uint16_t keys[4][3];
   c6422.readKeys(keys);
 
-  uint8_t keys8[4][6];
+  uint8_t keys8[4][8];
   for (int key = 0; key < 4; key++)
   {
+    keys8[key][0] = 0;
     for (int addr = 0; addr < 3; addr++)
     {
-      keys8[key][addr * 2] = keys[key][addr] >> 8;
-      keys8[key][addr * 2 + 1] = keys[key][addr] % 0x100;
+      keys8[key][addr * 2 + 1] = keys[key][addr] >> 8;
+      keys8[key][addr * 2 + 2] = keys[key][addr] % 0x100;
     }
+    keys8[key][7] = 0;
   } 
-  cobraTouchkeyCharacteristic.writeValue(keys8, 24);
+  cobraTouchkeyCharacteristic.writeValue(keys8, 32);
 
   immobCharacteristic.writeValue(c6422.getImmobiliserCode());
 }

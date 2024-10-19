@@ -28,8 +28,8 @@ class _TouchKeysPageState extends State<TouchKeysPage> {
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: StreamBuilder<String>(
-                  stream: widget.bleManager.latestValueStream,
-                  initialData: widget.bleManager.latestValue,
+                  stream: widget.bleManager.latestCobraValueStream,
+                  initialData: widget.bleManager.latestCobraValue,
                   builder: (context, snapshot) {
                     return Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -43,6 +43,7 @@ class _TouchKeysPageState extends State<TouchKeysPage> {
                           snapshot.data!.isNotEmpty
                               ? snapshot.data!
                               : 'No data yet',
+                          textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 16),
                         ),
                       ],
@@ -68,8 +69,8 @@ class _TouchKeysPageState extends State<TouchKeysPage> {
                   ),
                   Expanded(
                     child: StreamBuilder<List<List<int>>>(
-                      stream: widget.bleManager.touchKeysStream,
-                      initialData: widget.bleManager.touchKeys,
+                      stream: widget.bleManager.programmerTouchKeysStream,
+                      initialData: widget.bleManager.programmerTouchKeys,
                       builder: (context, snapshot) {
                         final touchKeys = snapshot.data!;
                         return touchKeys.isNotEmpty
@@ -84,11 +85,13 @@ class _TouchKeysPageState extends State<TouchKeysPage> {
                                           EdgeInsets.symmetric(horizontal: 8.0),
                                       child: Text(
                                         touchKeys[index]
+                                            .sublist(1, 7)
                                             .map((byte) => byte
                                                 .toRadixString(16)
                                                 .padLeft(2, '0')
                                                 .toUpperCase())
                                             .join(' '),
+                                        textAlign: TextAlign.center,
                                         style: TextStyle(fontSize: 16),
                                       ),
                                     ),
@@ -109,7 +112,7 @@ class _TouchKeysPageState extends State<TouchKeysPage> {
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: ElevatedButton(
-                      onPressed: widget.bleManager.clearTouchKeys,
+                      onPressed: widget.bleManager.clearProgrammerTouchKeys,
                       child: Text('Clear'),
                     ),
                   ),
@@ -124,7 +127,7 @@ class _TouchKeysPageState extends State<TouchKeysPage> {
             child: ElevatedButton(
               onPressed: () {
                 widget.bleManager
-                    .touchkeyWrite(); // Write operation triggered from BLEManager
+                    .programmerTouchKeyWriteToCobra(); // Write operation triggered from BLEManager
               },
               child: Text('Write'),
             ),
