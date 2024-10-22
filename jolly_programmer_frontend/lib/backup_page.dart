@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'package:share_plus/share_plus.dart';
 import 'ble_manager.dart';
 
 class BackupPage extends StatefulWidget {
@@ -11,33 +14,78 @@ class BackupPage extends StatefulWidget {
 }
 
 String formatCobraValue(List<int> hexBytes) {
-  // Split the latestCobraValue into a list of hex byte strings (2 chars per byte)
   List<String> formattedLines = [];
-
-  // Iterate over the hexBytes in chunks of 32 bytes
   for (int i = 0; i < hexBytes.length; i += 32) {
-    // Get a chunk of 32 bytes
     List<int> chunk = hexBytes.sublist(
         i, i + 32 > hexBytes.length ? hexBytes.length : i + 32);
-
-    // Convert chunk into hex string with space after every 2 pairs of hex digits
     String formattedChunk = chunk
-        .map((e) =>
-            e.toRadixString(16).padLeft(2, '0').toUpperCase()) // Convert to hex
-        .join('') // Join hex bytes without spaces
-        .replaceAllMapped(
-            RegExp(r'([A-F0-9]{4})'),
-            (match) =>
-                '${match[1]} '); // Add space after every 4 characters (2 hex pairs)
-
-    formattedLines.add(formattedChunk.trim()); // Trim to remove trailing space
+        .map((e) => e.toRadixString(16).padLeft(2, '0').toUpperCase())
+        .join('')
+        .replaceAllMapped(RegExp(r'([A-F0-9]{4})'), (match) => '${match[1]} ');
+    formattedLines.add(formattedChunk.trim());
   }
-
-  // Join the lines with a newline separator
   return formattedLines.join('\n');
 }
 
 class _BackupPageState extends State<BackupPage> {
+  // Method to get the directory for Android's Downloads folder
+  Future<String> _getDownloadsDirectory() async {
+    Directory? downloadsDir = await getExternalStorageDirectory();
+    return downloadsDir!.path;
+  }
+
+  // Method to save EEPROM data to a file in a user-accessible location
+  Future<void> _saveEEPROMToFile(List<int> eepromData) async {
+    try {
+      final path = await _getDownloadsDirectory();
+      final filePath = '$path/eeprom_backup.bin';
+
+      File file = File(filePath);
+      await file.writeAsBytes(eepromData);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('EEPROM data saved to $filePath')),
+      );
+
+      // If on iOS, trigger the share functionality using share_plus
+      //if (Platform.isIOS) {
+      await Share.shareXFiles([XFile(filePath)], text: 'Backup of EEPROM data');
+      //
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save file: $e')),
+      );
+    }
+  }
+
+  // Method to load and write EEPROM data from the user-accessible file
+  Future<void> _loadAndWriteEEPROMFromFile() async {
+    try {
+      final path = await _getDownloadsDirectory();
+      final filePath = '$path/eeprom_backup.bin';
+      File file = File(filePath);
+
+      if (await file.exists()) {
+        List<int> fileBytes = await file.readAsBytes();
+
+        // Write the file bytes to the EEPROM characteristic
+        widget.bleManager.writeEEPROM(fileBytes);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('EEPROM data written from $filePath')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No backup file found.')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load file: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -48,8 +96,7 @@ class _BackupPageState extends State<BackupPage> {
         children: [
           // Top half as a Card: Display the most recent value of a characteristic
           SizedBox(
-            width: double
-                .infinity, // Make the card take the full width of the screen
+            width: double.infinity,
             child: Card(
               margin: const EdgeInsets.all(10),
               child: Padding(
@@ -81,15 +128,30 @@ class _BackupPageState extends State<BackupPage> {
             ),
           ),
 
-          // "Write" button at the bottom
+          // "Save" button to save EEPROM contents to a binary file
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: ElevatedButton(
               onPressed: () {
-                widget.bleManager
-                    .programmerTouchKeyWriteToCobra(); // Write operation triggered from BLEManager
+                final eepromData = widget.bleManager.latestEepromValue;
+                if (eepromData.isNotEmpty) {
+                  _saveEEPROMToFile(eepromData);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('No EEPROM data to save.')),
+                  );
+                }
               },
-              child: Text('Write'),
+              child: Text('Save EEPROM to File'),
+            ),
+          ),
+
+          // "Load and Write" button to load a binary file and write to the EEPROM
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: ElevatedButton(
+              onPressed: _loadAndWriteEEPROMFromFile,
+              child: Text('Load EEPROM from File and Write'),
             ),
           ),
         ],

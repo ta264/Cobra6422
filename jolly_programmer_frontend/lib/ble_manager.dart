@@ -190,6 +190,13 @@ class BLEManager {
     }
   }
 
+  Future<void> writeEEPROM(List<int> eepromData) async {
+    if (_eepromCharacteristic != null &&
+        _eepromCharacteristic!.properties.write) {
+      await _eepromCharacteristic!.write(eepromData, withoutResponse: false);
+    }
+  }
+
   int convertBytesToIntLE(List<int> bytes) {
     if (bytes.length != 4) {
       throw ArgumentError('List must contain exactly 4 bytes');
