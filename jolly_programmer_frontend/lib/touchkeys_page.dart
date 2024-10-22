@@ -10,12 +10,38 @@ class TouchKeysPage extends StatefulWidget {
   _TouchKeysPageState createState() => _TouchKeysPageState();
 }
 
+String formatCobraValue(List<int> hexBytes) {
+  // Split the latestCobraValue into a list of hex byte strings (2 chars per byte)
+  List<String> formattedLines = [];
+
+  // Iterate over the hexBytes in chunks of 8 bytes
+  for (int i = 0; i < hexBytes.length; i += 8) {
+    // Get a chunk of 8 bytes
+    List<int> chunk = hexBytes.sublist(i, i + 8);
+
+    // Check if all bytes in the chunk are '00'
+    bool allZeroes = chunk.every((byte) => byte == 0);
+
+    // Only add the line if not all 6 bytes are zero
+    if (!allZeroes) {
+      // Join the chunk back into a line and add to the result
+      formattedLines.add(chunk
+          .sublist(1, 7)
+          .map((e) => e.toRadixString(16).padLeft(2, '0').toUpperCase())
+          .join(' '));
+    }
+  }
+
+  // Join the lines with a newline separator
+  return formattedLines.join('\n');
+}
+
 class _TouchKeysPageState extends State<TouchKeysPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Touchkeys'),
+        title: Text('Touch Keys'),
       ),
       body: Column(
         children: [
@@ -27,22 +53,23 @@ class _TouchKeysPageState extends State<TouchKeysPage> {
               margin: const EdgeInsets.all(10),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: StreamBuilder<String>(
+                child: StreamBuilder<List<int>>(
                   stream: widget.bleManager.latestCobraValueStream,
                   initialData: widget.bleManager.latestCobraValue,
                   builder: (context, snapshot) {
+                    String text = snapshot.data!.isNotEmpty
+                        ? formatCobraValue(snapshot.data!)
+                        : 'No data yet';
                     return Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'Stored touchkeys:',
+                          'Stored Touch Keys:',
                           style: TextStyle(fontSize: 18),
                         ),
                         SizedBox(height: 10),
                         Text(
-                          snapshot.data!.isNotEmpty
-                              ? snapshot.data!
-                              : 'No data yet',
+                          text,
                           textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 16),
                         ),
@@ -58,78 +85,79 @@ class _TouchKeysPageState extends State<TouchKeysPage> {
           Expanded(
             child: Card(
               margin: const EdgeInsets.all(10),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      'New touchkeys:',
-                      style: TextStyle(fontSize: 18),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        'New Touch Keys:',
+                        style: TextStyle(fontSize: 18),
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: StreamBuilder<List<List<int>>>(
-                      stream: widget.bleManager.programmerTouchKeysStream,
-                      initialData: widget.bleManager.programmerTouchKeys,
-                      builder: (context, snapshot) {
-                        final touchKeys = snapshot.data!;
-                        return touchKeys.isNotEmpty
-                            ? ListView.builder(
-                                itemCount: touchKeys.length,
-                                itemBuilder: (context, index) {
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 2.0),
-                                    child: Container(
-                                      padding:
-                                          EdgeInsets.symmetric(horizontal: 8.0),
-                                      child: Text(
-                                        touchKeys[index]
-                                            .sublist(1, 7)
-                                            .map((byte) => byte
-                                                .toRadixString(16)
-                                                .padLeft(2, '0')
-                                                .toUpperCase())
-                                            .join(' '),
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(fontSize: 16),
+                    Expanded(
+                      child: StreamBuilder<List<List<int>>>(
+                        stream: widget.bleManager.programmerTouchKeysStream,
+                        initialData: widget.bleManager.programmerTouchKeys,
+                        builder: (context, snapshot) {
+                          final touchKeys = snapshot.data!;
+                          return touchKeys.isNotEmpty
+                              ? ListView.builder(
+                                  itemCount: touchKeys.length,
+                                  itemBuilder: (context, index) {
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 2.0),
+                                      child: Container(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 8.0),
+                                        child: Text(
+                                          touchKeys[index]
+                                              .sublist(1, 7)
+                                              .map((byte) => byte
+                                                  .toRadixString(16)
+                                                  .padLeft(2, '0')
+                                                  .toUpperCase())
+                                              .join(' '),
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(fontSize: 16),
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                },
-                              )
-                            : Center(
-                                child: Text(
-                                  'Touch new key to reader',
-                                  style: TextStyle(
-                                      fontSize: 16,
-                                      fontStyle: FontStyle.italic),
-                                ),
-                              );
-                      },
+                                    );
+                                  },
+                                )
+                              : Center(
+                                  child: Text(
+                                    'Touch new key to reader',
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        fontStyle: FontStyle.italic),
+                                  ),
+                                );
+                        },
+                      ),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: ElevatedButton(
-                      onPressed: widget.bleManager.clearProgrammerTouchKeys,
-                      child: Text('Clear'),
+                    SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        ElevatedButton(
+                          onPressed: widget.bleManager.clearProgrammerTouchKeys,
+                          child: Text('Clear'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            // Write the new touch keys
+                            widget.bleManager.programmerTouchKeyWriteToCobra();
+                          },
+                          child: Text('Write'),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ),
-
-          // "Write" button at the bottom
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: ElevatedButton(
-              onPressed: () {
-                widget.bleManager
-                    .programmerTouchKeyWriteToCobra(); // Write operation triggered from BLEManager
-              },
-              child: Text('Write'),
             ),
           ),
         ],

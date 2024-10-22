@@ -31,16 +31,24 @@ class BLEManager {
       _cobraTouchKeyCharacteristic; // Store cobraTouchKey characteristic
   BluetoothCharacteristic?
       _programmerTouchKeyCharacteristic; // Store programmerTouchKey characteristic
+  BluetoothCharacteristic? _eepromCharacteristic; // Full eeprom dump
+  BluetoothCharacteristic? _immobiliserCharacteristic; // immobiliser code
 
   // State for the cobraTouchKey characteristic (latest value) and programmer touch key list
-  String _latestCobraValue = "";
+  List<int> _latestCobraValue = [];
   List<List<int>> _programmerTouchKeys = [];
+  List<int> _latestEepromValue = [];
+  int _latestImmobiliserCode = 0;
 
   // Stream controllers for the cobraTouchKey characteristic and programmerTouchKeys
-  final StreamController<String> _latestCobraValueController =
-      StreamController<String>.broadcast();
+  final StreamController<List<int>> _latestCobraValueController =
+      StreamController<List<int>>.broadcast();
   final StreamController<List<List<int>>> _programmerTouchKeysController =
       StreamController<List<List<int>>>.broadcast();
+  final StreamController<List<int>> _eepromController =
+      StreamController<List<int>>.broadcast();
+  final StreamController<int> _immobiliserController =
+      StreamController<int>.broadcast();
 
   // Singleton pattern for BLEManager
   static final BLEManager _instance = BLEManager._internal();
@@ -51,14 +59,18 @@ class BLEManager {
   BLEManager._internal();
 
   // Getters for streams
-  Stream<String> get latestCobraValueStream =>
+  Stream<List<int>> get latestCobraValueStream =>
       _latestCobraValueController.stream;
   Stream<List<List<int>>> get programmerTouchKeysStream =>
       _programmerTouchKeysController.stream;
+  Stream<List<int>> get eepromStream => _eepromController.stream;
+  Stream<int> get immobiliserStream => _immobiliserController.stream;
 
   // Get current latest cobra value and programmer touch keys (for initial UI state)
-  String get latestCobraValue => _latestCobraValue;
+  List<int> get latestCobraValue => _latestCobraValue;
   List<List<int>> get programmerTouchKeys => _programmerTouchKeys;
+  List<int> get latestEepromValue => _latestEepromValue;
+  int get latestImmobiliserCode => _latestImmobiliserCode;
 
   // Method to start scanning and connect to a BLE device
   Future<void> scanAndConnect() async {
@@ -111,36 +123,16 @@ class BLEManager {
         TOUCHKEY_SERVICE_UUID, TOUCHKEY_READ_CHARACTERISTIC_UUID);
     _cobraTouchKeyCharacteristic = _findCharacteristic(
         COBRA_6422_SERVICE_UUID, TOUCHKEY_CHARACTERISTIC_UUID);
+    _eepromCharacteristic = _findCharacteristic(
+        COBRA_6422_SERVICE_UUID, EEPROM_CHARACTERISTIC_UUID);
+    _immobiliserCharacteristic =
+        _findCharacteristic(COBRA_6422_SERVICE_UUID, IMMOB_CHARACTERISTIC_UUID);
 
     // Subscribe to characteristics after caching them
     _subscribeToProgrammerTouchKeyCharacteristic();
     _subscribeToCobraTouchKeyCharacteristic();
-  }
-
-  String formatCobraValue(List<int> hexBytes) {
-    // Split the latestCobraValue into a list of hex byte strings (2 chars per byte)
-    List<String> formattedLines = [];
-
-    // Iterate over the hexBytes in chunks of 8 bytes
-    for (int i = 0; i < hexBytes.length; i += 8) {
-      // Get a chunk of 8 bytes
-      List<int> chunk = hexBytes.sublist(i, i + 8);
-
-      // Check if all bytes in the chunk are '00'
-      bool allZeroes = chunk.every((byte) => byte == 0);
-
-      // Only add the line if not all 6 bytes are zero
-      if (!allZeroes) {
-        // Join the chunk back into a line and add to the result
-        formattedLines.add(chunk
-            .sublist(1, 7)
-            .map((e) => e.toRadixString(16).padLeft(2, '0').toUpperCase())
-            .join(' '));
-      }
-    }
-
-    // Join the lines with a newline separator
-    return formattedLines.join('\n');
+    _subscribeToImmobiliserCharacteristic();
+    _subscribeToEepromCharacteristic();
   }
 
   // Subscribe to the cobraTouchKey characteristic
@@ -151,7 +143,7 @@ class BLEManager {
 
       _cobraTouchKeyCharacteristic!.lastValueStream.listen((value) {
         if (value.isNotEmpty) {
-          _latestCobraValue = formatCobraValue(value);
+          _latestCobraValue = value;
           _latestCobraValueController
               .add(_latestCobraValue); // Add latest cobra value to stream
         }
@@ -180,6 +172,64 @@ class BLEManager {
           }
         }
       });
+    }
+  }
+
+  // Subscribe to the cobraTouchKey characteristic
+  Future<void> _subscribeToEepromCharacteristic() async {
+    if (_eepromCharacteristic != null) {
+      await _eepromCharacteristic!.setNotifyValue(true); // Enable notifications
+
+      _eepromCharacteristic!.lastValueStream.listen((value) {
+        if (value.isNotEmpty) {
+          _latestEepromValue = value;
+          _eepromController
+              .add(_latestEepromValue); // Add latest cobra value to stream
+        }
+      });
+    }
+  }
+
+  int convertBytesToIntLE(List<int> bytes) {
+    if (bytes.length != 4) {
+      throw ArgumentError('List must contain exactly 4 bytes');
+    }
+    // Combine the bytes into a 32-bit integer (little-endian)
+    return (bytes[3] << 24) | (bytes[2] << 16) | (bytes[1] << 8) | bytes[0];
+  }
+
+  List<int> convertIntToBytesLE(int value) {
+    return [
+      value & 0xFF, // Extract least significant byte
+      (value >> 8) & 0xFF, // Extract next byte
+      (value >> 16) & 0xFF, // Extract next byte
+      (value >> 24) & 0xFF, // Extract most significant byte
+    ];
+  }
+
+  // Subscribe to the cobraTouchKey characteristic
+  Future<void> _subscribeToImmobiliserCharacteristic() async {
+    if (_immobiliserCharacteristic != null) {
+      await _immobiliserCharacteristic!
+          .setNotifyValue(true); // Enable notifications
+
+      _immobiliserCharacteristic!.lastValueStream.listen((value) {
+        if (value.isNotEmpty) {
+          _latestImmobiliserCode = convertBytesToIntLE(value);
+          _immobiliserController
+              .add(_latestImmobiliserCode); // Add latest cobra value to stream
+        }
+      });
+    }
+  }
+
+  // Write the most recent 4 programmer touch keys to the cobraTouchKey characteristic
+  Future<void> writeNewImmobiliserCode(int value) async {
+    if (_immobiliserCharacteristic != null &&
+        _immobiliserCharacteristic!.properties.write) {
+      await _immobiliserCharacteristic!
+          .write(convertIntToBytesLE(value), withoutResponse: false);
+      // Flatten the most recent 4 programmer touch keys into a single list of integers
     }
   }
 

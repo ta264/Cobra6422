@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:jolly_programmer_frontend/backup_page.dart';
+import 'package:jolly_programmer_frontend/immobiliser_page.dart';
 import 'ble_manager.dart';
 import 'touchkeys_page.dart';
 
@@ -73,36 +75,8 @@ class _NavigationExampleState extends State<NavigationExample> {
       body: <Widget>[
         /// Home page
         TouchKeysPage(bleManager: _bleManager),
-
-        /// Notifications page
-        /// Home page
-        Card(
-          shadowColor: Colors.transparent,
-          margin: const EdgeInsets.all(8.0),
-          child: SizedBox.expand(
-            child: Center(
-              child: Text(
-                'Immobiliser',
-                style: theme.textTheme.titleLarge,
-              ),
-            ),
-          ),
-        ),
-
-        /// Messages page
-        /// Home page
-        Card(
-          shadowColor: Colors.transparent,
-          margin: const EdgeInsets.all(8.0),
-          child: SizedBox.expand(
-            child: Center(
-              child: Text(
-                'Backup',
-                style: theme.textTheme.titleLarge,
-              ),
-            ),
-          ),
-        ),
+        ImmobiliserPage(bleManager: _bleManager),
+        BackupPage(bleManager: _bleManager)
       ][currentPageIndex],
     );
   }

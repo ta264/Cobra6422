@@ -125,11 +125,14 @@ void setup() {
   c6422StatusCharacteristic.setEventHandler(BLEWritten, statusWritten);
 
   cobraTouchkeyCharacteristic.addDescriptor(cobraTouchkeyDescriptor);
-  cobraTouchkeyCharacteristic.setEventHandler(BLESubscribed, updateDataHandler);
+  //cobraTouchkeyCharacteristic.setEventHandler(BLESubscribed, updateDataHandler);
   cobraTouchkeyCharacteristic.setEventHandler(BLEWritten, touchkeyWritten);
 
   eepromCharacteristic.addDescriptor(eepromDescriptor);
+  eepromCharacteristic.setEventHandler(BLESubscribed, updateDataHandler);
+
   immobCharacteristic.addDescriptor(immobDescriptor);
+  immobCharacteristic.setEventHandler(BLEWritten, immobWritten);
 
   cobra6422Service.addCharacteristic(c6422StatusCharacteristic);
   cobra6422Service.addCharacteristic(eepromCharacteristic);  
@@ -259,6 +262,18 @@ void touchkeyWritten(BLEDevice central, BLECharacteristic characteristic)
   Serial.println();
 
   c6422.writeKeys(keyCount, keys);
+  c6422.read();
+  updateData();
+}
+
+void immobWritten(BLEDevice central, BLECharacteristic characteristic)
+{
+  Serial.print("Detected immob write: ");
+  int value = immobCharacteristic.value();
+  Serial.println(value);
+
+  
+  //c6422.writeImmobiliserCode(value);
   c6422.read();
   updateData();
 }
