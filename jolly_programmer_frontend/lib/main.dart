@@ -4,6 +4,7 @@ import 'package:jolly_programmer_frontend/backup_page.dart';
 import 'package:jolly_programmer_frontend/immobiliser_page.dart';
 import 'ble_manager.dart';
 import 'touchkeys_page.dart';
+import 'loading_screen.dart';
 
 /// Flutter code sample for [NavigationBar].
 
@@ -72,12 +73,23 @@ class _NavigationExampleState extends State<NavigationExample> {
           ),
         ],
       ),
-      body: <Widget>[
-        /// Home page
-        TouchKeysPage(bleManager: _bleManager),
-        ImmobiliserPage(bleManager: _bleManager),
-        BackupPage(bleManager: _bleManager)
-      ][currentPageIndex],
+      body: StreamBuilder<bool>(
+        stream: _bleManager.connectionStateStream,
+        initialData: false, // Assume initially disconnected
+        builder: (context, snapshot) {
+          if (snapshot.data == false) {
+            // Show loading screen while waiting for BLE connection
+            return const LoadingScreen(message: 'Connecting to BLE Device...');
+          } else {
+            // Show the main navigation body when connected
+            return <Widget>[
+              TouchKeysPage(bleManager: _bleManager),
+              ImmobiliserPage(bleManager: _bleManager),
+              BackupPage(bleManager: _bleManager)
+            ][currentPageIndex];
+          }
+        },
+      ),
     );
   }
 }

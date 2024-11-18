@@ -23,6 +23,10 @@ class BLEManager {
   static const String C1984_CODE_CHARACTERISTIC_UUID =
       "d0ca177f-e266-4554-9dbb-1a0ca97c90c4";
 
+  // Reconnection properties
+  bool _isReconnecting = false;
+  final Duration _reconnectDelay = Duration(seconds: 1);
+
   BluetoothDevice? _connectedDevice;
   List<BluetoothService> _services = [];
 
@@ -49,6 +53,9 @@ class BLEManager {
       StreamController<List<int>>.broadcast();
   final StreamController<int> _immobiliserController =
       StreamController<int>.broadcast();
+      // Connection state stream controller
+  final StreamController<bool> _connectionStateController = StreamController<bool>.broadcast();
+
 
   // Singleton pattern for BLEManager
   static final BLEManager _instance = BLEManager._internal();
@@ -65,6 +72,8 @@ class BLEManager {
       _programmerTouchKeysController.stream;
   Stream<List<int>> get eepromStream => _eepromController.stream;
   Stream<int> get immobiliserStream => _immobiliserController.stream;
+  Stream<bool> get connectionStateStream => _connectionStateController.stream;
+
 
   // Get current latest cobra value and programmer touch keys (for initial UI state)
   List<int> get latestCobraValue => _latestCobraValue;
@@ -91,14 +100,50 @@ class BLEManager {
     });
   }
 
-  // Connect to a BLE device and discover services
+  // Connect to a BLE device and monitor connection state
   Future<void> _connectToDevice(BluetoothDevice device) async {
-    await device.connect();
-    _connectedDevice = device;
+    try {
+      await device.connect();
+      _connectedDevice = device;
 
-    // Discover services and cache characteristics
-    _services = await device.discoverServices();
-    _cacheCharacteristics();
+      // Listen for connection state changes
+      _connectedDevice!.state.listen((state) {
+        if (state == BluetoothDeviceState.connected) {
+          _connectionStateController.add(true); // Emit connected state
+          _isReconnecting = false;
+          _discoverServices();
+        } else if (state == BluetoothDeviceState.disconnected) {
+          _connectionStateController.add(false); // Emit disconnected state
+          _attemptReconnect(); // Attempt to reconnect on disconnection
+        }
+      });
+    } catch (e) {
+      print('Failed to connect: $e');
+      _connectionStateController.add(false); // Emit disconnected on failure
+      _attemptReconnect(); // Attempt to reconnect on connection failure
+    }
+  }
+
+   // Attempt to reconnect with a delay
+  Future<void> _attemptReconnect() async {
+    if (_isReconnecting || _connectedDevice == null) {
+      return; // Prevent multiple reconnection attempts
+    }
+
+    _isReconnecting = true;
+    await Future.delayed(_reconnectDelay); // Wait before attempting to reconnect
+
+    print('Attempting to reconnect to BLE device...');
+    await scanAndConnect(); // Try to reconnect by scanning and connecting
+    _isReconnecting = false;
+  }
+
+  // Discover services and cache characteristics
+  Future<void> _discoverServices() async {
+    if (_connectedDevice != null) {
+      _services = await _connectedDevice!.discoverServices();
+      _cacheCharacteristics();
+    }
   }
 
   // Helper method to find a characteristic by UUID
@@ -273,5 +318,8 @@ class BLEManager {
   void dispose() {
     _latestCobraValueController.close();
     _programmerTouchKeysController.close();
+    _immobiliserController.close();
+    _eepromController.close();
+    _connectionStateController.close();
   }
 }

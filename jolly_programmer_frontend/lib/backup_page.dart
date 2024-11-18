@@ -69,7 +69,7 @@ class _BackupPageState extends State<BackupPage> {
         List<int> fileBytes = await file.readAsBytes();
 
         // Write the file bytes to the EEPROM characteristic
-        widget.bleManager.writeEEPROM(fileBytes);
+        await widget.bleManager.writeEEPROM(fileBytes);
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('EEPROM data written from $filePath')),
