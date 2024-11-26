@@ -53,9 +53,9 @@ class BLEManager {
       StreamController<List<int>>.broadcast();
   final StreamController<int> _immobiliserController =
       StreamController<int>.broadcast();
-      // Connection state stream controller
-  final StreamController<bool> _connectionStateController = StreamController<bool>.broadcast();
-
+  // Connection state stream controller
+  final StreamController<bool> _connectionStateController =
+      StreamController<bool>.broadcast();
 
   // Singleton pattern for BLEManager
   static final BLEManager _instance = BLEManager._internal();
@@ -73,7 +73,6 @@ class BLEManager {
   Stream<List<int>> get eepromStream => _eepromController.stream;
   Stream<int> get immobiliserStream => _immobiliserController.stream;
   Stream<bool> get connectionStateStream => _connectionStateController.stream;
-
 
   // Get current latest cobra value and programmer touch keys (for initial UI state)
   List<int> get latestCobraValue => _latestCobraValue;
@@ -108,11 +107,11 @@ class BLEManager {
 
       // Listen for connection state changes
       _connectedDevice!.state.listen((state) {
-        if (state == BluetoothDeviceState.connected) {
+        if (state == BluetoothConnectionState.connected) {
           _connectionStateController.add(true); // Emit connected state
           _isReconnecting = false;
           _discoverServices();
-        } else if (state == BluetoothDeviceState.disconnected) {
+        } else if (state == BluetoothConnectionState.disconnected) {
           _connectionStateController.add(false); // Emit disconnected state
           _attemptReconnect(); // Attempt to reconnect on disconnection
         }
@@ -124,14 +123,15 @@ class BLEManager {
     }
   }
 
-   // Attempt to reconnect with a delay
+  // Attempt to reconnect with a delay
   Future<void> _attemptReconnect() async {
     if (_isReconnecting || _connectedDevice == null) {
       return; // Prevent multiple reconnection attempts
     }
 
     _isReconnecting = true;
-    await Future.delayed(_reconnectDelay); // Wait before attempting to reconnect
+    await Future.delayed(
+        _reconnectDelay); // Wait before attempting to reconnect
 
     print('Attempting to reconnect to BLE device...');
     await scanAndConnect(); // Try to reconnect by scanning and connecting
