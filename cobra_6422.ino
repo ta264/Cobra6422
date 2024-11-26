@@ -8,11 +8,13 @@
 // Microwire needs four wires (apart from VCC/GND) DO,DI,CS,CLK
 // configure them here, note that DO and DI are the pins of the
 // EEPROM, so DI is an output of the uC, while DO is an input
-const int pCS = 12;
+
 const int pCLK = 13;
-const int pDI = 11;
-const int pDO = 10;
-const int pProg = 8;
+const int pProg = 12;
+const int pCS = 11;
+const int pDI = 10;
+const int pDO = 9;
+
 Cobra6422 c6422(pCS, pCLK, pDI, pDO, pProg);
 
 // 1wire pin for reading touchkey
