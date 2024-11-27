@@ -28,7 +28,9 @@ String formatCobraValue(List<int> hexBytes) {
       formattedLines.add(chunk
           .sublist(1, 7)
           .map((e) => e.toRadixString(16).padLeft(2, '0').toUpperCase())
-          .join(' '));
+          .join('')
+          .replaceAllMapped(
+              RegExp(r'([A-F0-9]{4})'), (match) => '${match[1]} '));
     }
   }
 
@@ -113,13 +115,7 @@ class _TouchKeysPageState extends State<TouchKeysPage> {
                                         padding: EdgeInsets.symmetric(
                                             horizontal: 8.0),
                                         child: Text(
-                                          touchKeys[index]
-                                              .sublist(1, 7)
-                                              .map((byte) => byte
-                                                  .toRadixString(16)
-                                                  .padLeft(2, '0')
-                                                  .toUpperCase())
-                                              .join(' '),
+                                          formatCobraValue(touchKeys[index]),
                                           textAlign: TextAlign.center,
                                           style: TextStyle(fontSize: 16),
                                         ),
