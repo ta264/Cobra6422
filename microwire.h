@@ -119,5 +119,12 @@ void MicrowireEEPROM::write(int addr, uint16_t data)
   transmit(addr, ADDRWIDTH);
   transmit(data, PAGESIZE);
   digitalWrite(CS, LOW);
-  delay(250);
+
+  // Busy/Ready Polling: Wait until the DO pin goes HIGH
+  digitalWrite(CS, HIGH); // Activate CS for polling
+  while (digitalRead(DO) == LOW) {
+    // Keep polling DO until it goes HIGH
+    Serial.println("Waiting for write completion...");
+  }
+  digitalWrite(CS, LOW); // Deactivate CS after polling is complete
 }
