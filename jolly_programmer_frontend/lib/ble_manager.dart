@@ -112,30 +112,45 @@ class BLEManager {
           _isReconnecting = false;
           _discoverServices();
         } else if (state == BluetoothConnectionState.disconnected) {
+          _connectedDevice = null;
           _connectionStateController.add(false); // Emit disconnected state
           _attemptReconnect(); // Attempt to reconnect on disconnection
         }
       });
     } catch (e) {
       print('Failed to connect: $e');
+      _connectedDevice = null;
       _connectionStateController.add(false); // Emit disconnected on failure
       _attemptReconnect(); // Attempt to reconnect on connection failure
     }
   }
 
-  // Attempt to reconnect with a delay
+  // Improved reconnect logic with retry mechanism
   Future<void> _attemptReconnect() async {
-    if (_isReconnecting || _connectedDevice == null) {
-      return; // Prevent multiple reconnection attempts
+    if (_isReconnecting) {
+      return; // Prevent overlapping reconnection attempts
     }
 
     _isReconnecting = true;
-    await Future.delayed(
-        _reconnectDelay); // Wait before attempting to reconnect
 
-    print('Attempting to reconnect to BLE device...');
-    await scanAndConnect(); // Try to reconnect by scanning and connecting
-    _isReconnecting = false;
+    for (int currentReconnectAttempts = 0; true; currentReconnectAttempts++) {
+      await Future.delayed(
+          _reconnectDelay); // Wait before attempting to reconnect
+      print(
+          'Attempting to reconnect... (Attempt ${currentReconnectAttempts + 1})');
+
+      try {
+        await scanAndConnect();
+        // If connection succeeds, exit the loop
+        if (_connectedDevice != null) {
+          print('Reconnected successfully!');
+          _isReconnecting = false;
+          return;
+        }
+      } catch (e) {
+        print('Reconnection attempt failed: $e');
+      }
+    }
   }
 
   // Discover services and cache characteristics
