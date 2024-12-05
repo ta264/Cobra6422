@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:share_plus/share_plus.dart';
+import 'package:file_picker/file_picker.dart';
 import 'ble_manager.dart';
 
 class BackupPage extends StatefulWidget {
@@ -37,8 +38,11 @@ class _BackupPageState extends State<BackupPage> {
   // Method to save EEPROM data to a file in a user-accessible location
   Future<void> _saveEEPROMToFile(List<int> eepromData) async {
     try {
+      // Get the current date and time in ISO format
+      final String isoTimestamp =
+          DateTime.now().toIso8601String().replaceAll(':', '-');
       final path = await _getDownloadsDirectory();
-      final filePath = '$path/eeprom_backup.bin';
+      final filePath = '$path/eeprom_backup_$isoTimestamp.bin';
 
       File file = File(filePath);
       await file.writeAsBytes(eepromData);
@@ -58,25 +62,34 @@ class _BackupPageState extends State<BackupPage> {
     }
   }
 
-  // Method to load and write EEPROM data from the user-accessible file
-  Future<void> _loadAndWriteEEPROMFromFile() async {
+// Method to load a backup file chosen by the user and write its contents to EEPROM
+  Future<void> _loadAndWriteEEPROM() async {
     try {
-      final path = await _getDownloadsDirectory();
-      final filePath = '$path/eeprom_backup.bin';
-      File file = File(filePath);
+      // Open file picker to select a .bin file
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['bin'], // Allow only .bin files
+      );
 
-      if (await file.exists()) {
+      if (result != null && result.files.single.path != null) {
+        // Get the selected file path
+        final String filePath = result.files.single.path!;
+        File file = File(filePath);
+
+        // Read the file's contents
         List<int> fileBytes = await file.readAsBytes();
 
-        // Write the file bytes to the EEPROM characteristic
-        await widget.bleManager.writeEEPROM(fileBytes);
+        // Write the file's contents to the EEPROM characteristic
+        widget.bleManager.writeEEPROM(fileBytes);
 
+        // Notify the user of success
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('EEPROM data written from $filePath')),
         );
       } else {
+        // User canceled the file picker
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No backup file found.')),
+          SnackBar(content: Text('File selection canceled.')),
         );
       }
     } catch (e) {
@@ -150,7 +163,7 @@ class _BackupPageState extends State<BackupPage> {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: ElevatedButton(
-              onPressed: _loadAndWriteEEPROMFromFile,
+              onPressed: _loadAndWriteEEPROM,
               child: Text('Load EEPROM from File and Write'),
             ),
           ),
