@@ -132,6 +132,7 @@ void setup() {
 
   eepromCharacteristic.addDescriptor(eepromDescriptor);
   eepromCharacteristic.setEventHandler(BLESubscribed, updateDataHandler);
+  eepromCharacteristic.setEventHandler(BLEWritten, eepromWritten);
 
   immobCharacteristic.addDescriptor(immobDescriptor);
   immobCharacteristic.setEventHandler(BLEWritten, immobWritten);
@@ -274,8 +275,28 @@ void immobWritten(BLEDevice central, BLECharacteristic characteristic)
   int value = immobCharacteristic.value();
   Serial.println(value);
 
-  
-  //c6422.writeImmobiliserCode(value);
+  c6422.writeImmobiliserCode(value);
+  c6422.read();
+  updateData();
+}
+
+void eepromWritten(BLEDevice central, BLECharacteristic characteristic)
+{
+  uint8_t buffer[128] = {0};
+  characteristic.readValue(buffer, sizeof(buffer));
+
+  Serial.println("Detected EEPROM write");
+
+  uint16_t eeprom[64] = {0};
+  for (int i = 0; i < 64; i++) 
+  {
+    eeprom[i] = buffer[i * 2] << 8 | buffer[i * 2 + 1];
+  }
+
+  c6422.writeEEPROM(eeprom);
+
+  Serial.println("EEPROM written");
+
   c6422.read();
   updateData();
 }
