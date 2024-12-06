@@ -56,7 +56,7 @@ class _ImmobiliserPageState extends State<ImmobiliserPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'Current Immobiliser Code:',
+                          'Current Immobiliser Code',
                           style: TextStyle(fontSize: 18),
                           textAlign: TextAlign.center,
                         ),
@@ -85,7 +85,7 @@ class _ImmobiliserPageState extends State<ImmobiliserPage> {
                 child: Column(
                   children: [
                     Text(
-                      'Enter New Immobiliser Code:',
+                      'Write Immobiliser Code',
                       style: TextStyle(fontSize: 18),
                       textAlign: TextAlign.center,
                     ),

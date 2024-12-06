@@ -66,7 +66,7 @@ class _TouchKeysPageState extends State<TouchKeysPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'Stored Touch Keys:',
+                          'Stored Touch Keys',
                           style: TextStyle(fontSize: 18),
                         ),
                         SizedBox(height: 10),
@@ -94,7 +94,7 @@ class _TouchKeysPageState extends State<TouchKeysPage> {
                     Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Text(
-                        'New Touch Keys:',
+                        'New Touch Keys',
                         style: TextStyle(fontSize: 18),
                       ),
                     ),

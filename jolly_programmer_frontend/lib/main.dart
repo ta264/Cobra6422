@@ -79,7 +79,7 @@ class _NavigationExampleState extends State<NavigationExample> {
         builder: (context, snapshot) {
           if (snapshot.data == false) {
             // Show loading screen while waiting for BLE connection
-            return const LoadingScreen(message: 'Connecting to BLE Device...');
+            return const LoadingScreen(message: 'Connecting to programmer...');
           } else {
             // Show the main navigation body when connected
             return <Widget>[

@@ -122,7 +122,7 @@ class _BackupPageState extends State<BackupPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'EEPROM contents:',
+                          'EEPROM contents',
                           style: TextStyle(fontSize: 18),
                         ),
                         SizedBox(height: 10),
