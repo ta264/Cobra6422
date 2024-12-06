@@ -14,6 +14,25 @@ class _ImmobiliserPageState extends State<ImmobiliserPage> {
   final TextEditingController _controller = TextEditingController();
   int _newImmobiliserCode = 0;
 
+  // Function to show an error dialog
+  void _showErrorDialog(String errorMessage) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Error'),
+        content: Text(errorMessage),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Close the dialog
+            },
+            child: Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -100,6 +119,78 @@ class _ImmobiliserPageState extends State<ImmobiliserPage> {
                       },
                       child: Text('Write'),
                     ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // New bottom box for reading immobiliser code from 1984
+          SizedBox(
+            width: double.infinity,
+            child: Card(
+              margin: const EdgeInsets.all(10),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Read Immobiliser Code from 1984',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    SizedBox(height: 10),
+                    StreamBuilder<int>(
+                      stream: widget.bleManager.c1984CodeStream,
+                      initialData: -101,
+                      builder: (context, snapshot) {
+                        if (snapshot.data! == -101) {
+                          return SizedBox.shrink();
+                        }
+                        if (snapshot.data! == -999) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            widget.bleManager.reset1984ImmobiliserCodeRead();
+                            _showErrorDialog(
+                                "1984 already mobilised. Power cycle it and try again.");
+                          });
+                          return SizedBox.shrink();
+                        }
+                        if (snapshot.data! <= 0) {
+                          return LinearProgressIndicator(
+                            value: (snapshot.data! * -1) / 100,
+                            backgroundColor: Colors.grey[300],
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.blue),
+                          );
+                        } else {
+                          return Text(snapshot.data!.toString(),
+                              style: TextStyle(
+                                  fontSize: 32, fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.center);
+                        }
+                      },
+                    ),
+                    SizedBox(height: 10),
+                    StreamBuilder<int>(
+                        stream: widget.bleManager.c1984CodeStream,
+                        initialData: 0,
+                        builder: (context, snapshot) {
+                          return snapshot.data! <= 0
+                              ? ElevatedButton(
+                                  onPressed: () {
+                                    widget.bleManager
+                                        .readImmobiliserCodeFrom1984();
+                                  },
+                                  child: Text('Read'),
+                                )
+                              : ElevatedButton(
+                                  onPressed: () {
+                                    widget.bleManager
+                                        .reset1984ImmobiliserCodeRead();
+                                  },
+                                  child: Text('Clear'),
+                                );
+                        })
                   ],
                 ),
               ),

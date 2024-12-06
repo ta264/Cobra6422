@@ -9,8 +9,6 @@ class BLEManager {
 
   static const String COBRA_6422_SERVICE_UUID =
       "4e4cabae-e1d9-44c4-94f4-d2c269d6093b";
-  static const String C6422_STATUS_CHARACTERISTIC_UUID =
-      "4d970ade-6239-4c88-9a1c-2c544df31034";
   static const String EEPROM_CHARACTERISTIC_UUID =
       "8d2d0e29-853d-4c21-929b-b1233e987c60";
   static const String TOUCHKEY_CHARACTERISTIC_UUID =
@@ -37,12 +35,14 @@ class BLEManager {
       _programmerTouchKeyCharacteristic; // Store programmerTouchKey characteristic
   BluetoothCharacteristic? _eepromCharacteristic; // Full eeprom dump
   BluetoothCharacteristic? _immobiliserCharacteristic; // immobiliser code
+  BluetoothCharacteristic? _1984CodeCharacteristic;
 
   // State for the cobraTouchKey characteristic (latest value) and programmer touch key list
   List<int> _latestCobraValue = [];
   List<List<int>> _programmerTouchKeys = [];
   List<int> _latestEepromValue = [];
   int _latestImmobiliserCode = 0;
+  int _latest1984Code = -101;
 
   // Stream controllers for the cobraTouchKey characteristic and programmerTouchKeys
   final StreamController<List<int>> _latestCobraValueController =
@@ -52,6 +52,8 @@ class BLEManager {
   final StreamController<List<int>> _eepromController =
       StreamController<List<int>>.broadcast();
   final StreamController<int> _immobiliserController =
+      StreamController<int>.broadcast();
+  final StreamController<int> _c1984CodeController =
       StreamController<int>.broadcast();
   // Connection state stream controller
   final StreamController<bool> _connectionStateController =
@@ -72,6 +74,7 @@ class BLEManager {
       _programmerTouchKeysController.stream;
   Stream<List<int>> get eepromStream => _eepromController.stream;
   Stream<int> get immobiliserStream => _immobiliserController.stream;
+  Stream<int> get c1984CodeStream => _c1984CodeController.stream;
   Stream<bool> get connectionStateStream => _connectionStateController.stream;
 
   // Get current latest cobra value and programmer touch keys (for initial UI state)
@@ -187,6 +190,8 @@ class BLEManager {
         COBRA_6422_SERVICE_UUID, EEPROM_CHARACTERISTIC_UUID);
     _immobiliserCharacteristic =
         _findCharacteristic(COBRA_6422_SERVICE_UUID, IMMOB_CHARACTERISTIC_UUID);
+    _1984CodeCharacteristic = _findCharacteristic(
+        COBRA_1984_SERVICE_UUID, C1984_CODE_CHARACTERISTIC_UUID);
 
     // Subscribe to characteristics after caching them
     _subscribeToProgrammerTouchKeyCharacteristic();
@@ -257,12 +262,17 @@ class BLEManager {
     }
   }
 
-  int convertBytesToIntLE(List<int> bytes) {
-    if (bytes.length != 4) {
-      throw ArgumentError('List must contain exactly 4 bytes');
+  int convertBytesToSignedIntLE(List<int> bytes) {
+    // Combine bytes into a 32-bit integer
+    int value =
+        (bytes[0]) | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24);
+
+    // Apply two's complement correction if the sign bit is set
+    if (value & 0x80000000 != 0) {
+      value -= 0x100000000;
     }
-    // Combine the bytes into a 32-bit integer (little-endian)
-    return (bytes[3] << 24) | (bytes[2] << 16) | (bytes[1] << 8) | bytes[0];
+
+    return value;
   }
 
   List<int> convertIntToBytesLE(int value) {
@@ -282,7 +292,7 @@ class BLEManager {
 
       _immobiliserCharacteristic!.lastValueStream.listen((value) {
         if (value.isNotEmpty) {
-          _latestImmobiliserCode = convertBytesToIntLE(value);
+          _latestImmobiliserCode = convertBytesToSignedIntLE(value);
           _immobiliserController
               .add(_latestImmobiliserCode); // Add latest cobra value to stream
         }
@@ -329,12 +339,41 @@ class BLEManager {
         _programmerTouchKeys)); // Notify listeners with a new instance
   }
 
+  // Subscribe to the c1984Code characteristic.  This triggers the programmer
+  // to brute force the code from the 1984.
+  // The code characteristic will give negative numbers as progress and then
+  // show the code as a positive.
+  Future<void> readImmobiliserCodeFrom1984() async {
+    if (_1984CodeCharacteristic != null) {
+      await _1984CodeCharacteristic!
+          .setNotifyValue(true); // Enable notifications
+
+      _1984CodeCharacteristic!.lastValueStream.listen((value) {
+        if (value.isNotEmpty) {
+          _latest1984Code = convertBytesToSignedIntLE(value);
+          print('Got code: $_latest1984Code');
+
+          _c1984CodeController
+              .add(_latest1984Code); // Add latest cobra value to stream
+        }
+      });
+    }
+  }
+
+  Future<void> reset1984ImmobiliserCodeRead() async {
+    if (_1984CodeCharacteristic != null) {
+      await _1984CodeCharacteristic!.setNotifyValue(false);
+      _c1984CodeController.add(-101);
+    }
+  }
+
   // Dispose stream controllers
   void dispose() {
     _latestCobraValueController.close();
     _programmerTouchKeysController.close();
     _immobiliserController.close();
     _eepromController.close();
+    _c1984CodeController.close();
     _connectionStateController.close();
   }
 }

@@ -12,7 +12,7 @@ class Cobra1984
     const static int MAX_CODE = 0x3342;
 
     Cobra1984(int code_pin, int test_pin);
-    void BruteForce();
+    int BruteForce(void (*progressCallback)(int));
     static void encode_arg1(int32_t arg1, uint8_t result[]);
     static int32_t decode_result(const uint8_t result[]);
 };
@@ -162,8 +162,10 @@ void Cobra1984::emitCode(bool bits[])
   }
 }
 
-void Cobra1984::BruteForce()
+int Cobra1984::BruteForce(void (*progressCallback)(int))
 {
+  progressCallback(0);
+
   digitalWrite(pCode, LOW);
   pinMode(pCode, OUTPUT);
 
@@ -174,18 +176,15 @@ void Cobra1984::BruteForce()
   if (test == LOW)
   {
     Serial.println("Error: 1984 already mobilised.  Power cycle it and try again.");
-    return;
+    return -999;
   }
 
   for (int32_t code = 0; code < MAX_CODE; code++)
   {
     // 131 is floor(MAX_CODE / 100)
     if (code % 131 == 0)
-    {
-      Serial.print(code / 131);
-      Serial.println("%");
-    }
-
+      progressCallback(code / 131);
+    
     uint8_t data[3] = {0, 0, 0};
     encode_arg1(code, data);
 
@@ -202,8 +201,10 @@ void Cobra1984::BruteForce()
     PinStatus test = digitalRead(pTest);
     if (test == LOW)
     {
+      progressCallback(100);
       Serial.print("Code is: ");
       Serial.println((code % MAX_CODE) + MAX_CODE);
+      return (code % MAX_CODE) + MAX_CODE;
       break;
     }
   }

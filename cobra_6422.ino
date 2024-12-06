@@ -83,7 +83,7 @@ BLEDescriptor immobDescriptor("2901","6422 Immobiliser Code");
 const char* COBRA_1984_SERVICE_UUID = "eb3df65a-06e3-4a42-b790-73b5caea9dc9";
 const char* C1984_CODE_CHARACTERISTIC_UUID = "d0ca177f-e266-4554-9dbb-1a0ca97c90c4";
 BLEService cobra1984Service(COBRA_1984_SERVICE_UUID);
-BLEIntCharacteristic c1984CodeCharacteristic(C1984_CODE_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify);
+BLEIntCharacteristic c1984CodeCharacteristic(C1984_CODE_CHARACTERISTIC_UUID, BLERead | BLENotify);
 BLEDescriptor c1984CodeDescriptor("2901","1984 Immobiliser Code");
 
 void setup() {
@@ -147,6 +147,7 @@ void setup() {
   // 1984
   c1984CodeCharacteristic.addDescriptor(c1984CodeDescriptor);
   c1984CodeCharacteristic.writeValue(0);
+  c1984CodeCharacteristic.setEventHandler(BLESubscribed, c1984CodeSubscribed);
   cobra1984Service.addCharacteristic(c1984CodeCharacteristic);
 
   BLE.addService(cobra1984Service);
@@ -278,6 +279,17 @@ void immobWritten(BLEDevice central, BLECharacteristic characteristic)
   c6422.writeImmobiliserCode(value);
   c6422.read();
   updateData();
+}
+
+void c1984CodeSubscribed(BLEDevice central, BLECharacteristic characteristic)
+{
+  Serial.println("Detected immob code subscribe, brute forcing.");
+  int code = c1984.BruteForce([c1984CodeCharacteristic](int progress) {
+    Serial.print(progress);
+    Serial.println("%");
+    c1984CodeCharacteristic.writeValue(progress * -1);
+  });
+  c1984CodeCharacteristic.writeValue(code);
 }
 
 void eepromWritten(BLEDevice central, BLECharacteristic characteristic)
