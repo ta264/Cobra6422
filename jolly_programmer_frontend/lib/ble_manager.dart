@@ -90,9 +90,7 @@ class BLEManager {
     }
 
     // Start scanning for BLE devices
-    FlutterBluePlus.startScan(
-        timeout: Duration(seconds: 4),
-        withServices: [Guid(COBRA_6422_SERVICE_UUID)]);
+    FlutterBluePlus.startScan(withServices: [Guid(COBRA_6422_SERVICE_UUID)]);
     FlutterBluePlus.scanResults.listen((results) async {
       if (results.isNotEmpty) {
         final device = results.first.device;
