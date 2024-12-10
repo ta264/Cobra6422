@@ -343,18 +343,19 @@ class BLEManager {
   // show the code as a positive.
   Future<void> readImmobiliserCodeFrom1984() async {
     if (_1984CodeCharacteristic != null) {
-      await _1984CodeCharacteristic!
-          .setNotifyValue(true); // Enable notifications
-
-      _1984CodeCharacteristic!.lastValueStream.listen((value) {
+      final subscription =
+          _1984CodeCharacteristic!.onValueReceived.listen((value) {
         if (value.isNotEmpty) {
           _latest1984Code = convertBytesToSignedIntLE(value);
           print('Got code: $_latest1984Code');
 
-          _c1984CodeController
-              .add(_latest1984Code); // Add latest cobra value to stream
+          _c1984CodeController.add(_latest1984Code);
         }
       });
+
+      _connectedDevice!.cancelWhenDisconnected(subscription);
+
+      await _1984CodeCharacteristic!.setNotifyValue(true);
     }
   }
 

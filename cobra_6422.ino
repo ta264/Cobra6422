@@ -24,6 +24,7 @@ OneWire net(pTouchKey);
 const int pCode = 5;
 const int pTest = 6;
 Cobra1984 c1984(pCode, pTest);
+int c1984status = -1;
 
 // Touchkey service to read new touchkeys for writing to cobra
 //   Key read
@@ -136,9 +137,25 @@ void readTouchKey() {
   touchkeyReadCharacteristic.writeValue(addr, 8);
 }
 
+void do1984loop() {
+  if (c1984status > 0) {
+    if (c1984.test_next_code()) {
+      c1984CodeCharacteristic.writeValue(c1984.currentCode);
+      c1984status = -1;
+    } else {
+      float progress = c1984.currentCode * -100 / (float)c1984.MAX_CODE;
+      c1984CodeCharacteristic.writeValue(progress);
+      Serial.print(progress);
+      Serial.println("%");
+    }
+  }
+}
+
+
 void loop() {
   BLE.poll();
   readTouchKey();
+  do1984loop();
 }
 
 void blePeripheralConnectHandler(BLEDevice central) {
@@ -225,12 +242,12 @@ void immobWritten(BLEDevice central, BLECharacteristic characteristic)
 void c1984CodeSubscribed(BLEDevice central, BLECharacteristic characteristic)
 {
   Serial.println("Detected immob code subscribe, brute forcing.");
-  int code = c1984.BruteForce([c1984CodeCharacteristic](int progress) {
-    Serial.print(progress);
-    Serial.println("%");
-    c1984CodeCharacteristic.writeValue(progress * -1);
-  });
-  c1984CodeCharacteristic.writeValue(code);
+
+  if (c1984.setup_brute_force()) {
+    c1984status = 1;
+  } else {
+    c1984CodeCharacteristic.writeValue(-999);
+  }
 }
 
 void eepromWritten(BLEDevice central, BLECharacteristic characteristic)

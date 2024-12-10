@@ -4,15 +4,20 @@ class Cobra1984
     int pCode;
     int pTest;
     
+    
     void getBits(uint8_t code[], bool bits[]);
     void emitCode(bool bits[]);
 
   public:
     // the maximum immobiliser code value, codes are computed modulo this number
     const static int MAX_CODE = 0x3342;
+    int currentCode;
 
     Cobra1984(int code_pin, int test_pin);
-    int BruteForce(void (*progressCallback)(int));
+    bool setup_brute_force();
+    int BruteForce(void (*progressCallback)(float));
+    bool test_code(int32_t code);
+    bool test_next_code();
     static void encode_arg1(int32_t arg1, uint8_t result[]);
     static int32_t decode_result(const uint8_t result[]);
 };
@@ -21,6 +26,7 @@ Cobra1984::Cobra1984(int code_pin, int test_pin)
 {
   this->pCode = code_pin;
   this->pTest = test_pin;
+  this->currentCode = 300;
 }
 
 // Function to encode arg1 into the result array
@@ -162,30 +168,9 @@ void Cobra1984::emitCode(bool bits[])
   }
 }
 
-int Cobra1984::BruteForce(void (*progressCallback)(int))
+bool Cobra1984::test_code(int32_t code)
 {
-  progressCallback(0);
-
-  digitalWrite(pCode, LOW);
-  pinMode(pCode, OUTPUT);
-
-  pinMode(pTest, INPUT_PULLUP);
-
-  Serial.println("Detecting code");
-  PinStatus test = digitalRead(pTest);
-  if (test == LOW)
-  {
-    Serial.println("Error: 1984 already mobilised.  Power cycle it and try again.");
-    return -999;
-  }
-
-  for (int32_t code = 0; code < MAX_CODE; code++)
-  {
-    // 131 is floor(MAX_CODE / 100)
-    if (code % 131 == 0)
-      progressCallback(code / 131);
-    
-    uint8_t data[3] = {0, 0, 0};
+  uint8_t data[3] = {0, 0, 0};
     encode_arg1(code, data);
 
     bool bits[18];
@@ -199,7 +184,39 @@ int Cobra1984::BruteForce(void (*progressCallback)(int))
 
     // check if the relay has activated
     PinStatus test = digitalRead(pTest);
-    if (test == LOW)
+    return (test == LOW);
+}
+
+bool Cobra1984::test_next_code()
+{
+  currentCode = (currentCode + 1) % MAX_CODE;
+  return test_code(currentCode);
+}
+
+bool Cobra1984::setup_brute_force()
+{
+  digitalWrite(pCode, LOW);
+  pinMode(pCode, OUTPUT);
+  pinMode(pTest, INPUT_PULLUP);
+
+  PinStatus test = digitalRead(pTest);
+  if (test == LOW)
+  {
+    Serial.println("Error: 1984 already mobilised.  Power cycle it and try again.");
+    return false;
+  }
+
+  return true;
+}
+
+int Cobra1984::BruteForce(void (*progressCallback)(float))
+{
+  progressCallback(0);
+
+  for (int32_t code = 300; code < MAX_CODE + 300; code++)
+  {
+    progressCallback((float)code/(float)MAX_CODE);
+    if (test_code(code))
     {
       progressCallback(100);
       Serial.print("Code is: ");
