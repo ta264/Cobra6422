@@ -142,12 +142,12 @@ class _ImmobiliserPageState extends State<ImmobiliserPage> {
                     SizedBox(height: 10),
                     StreamBuilder<int>(
                       stream: widget.bleManager.c1984CodeStream,
-                      initialData: -101,
+                      initialData: -100000,
                       builder: (context, snapshot) {
-                        if (snapshot.data! == -101) {
+                        if (snapshot.data! == -100000) {
                           return SizedBox.shrink();
                         }
-                        if (snapshot.data! == -999) {
+                        if (snapshot.data! == -100002) {
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             widget.bleManager.reset1984ImmobiliserCodeRead();
                             _showErrorDialog(
@@ -173,23 +173,31 @@ class _ImmobiliserPageState extends State<ImmobiliserPage> {
                     SizedBox(height: 10),
                     StreamBuilder<int>(
                         stream: widget.bleManager.c1984CodeStream,
-                        initialData: 0,
+                        initialData: -100000,
                         builder: (context, snapshot) {
-                          return snapshot.data! <= 0
-                              ? ElevatedButton(
-                                  onPressed: () {
-                                    widget.bleManager
-                                        .readImmobiliserCodeFrom1984();
-                                  },
-                                  child: Text('Read'),
-                                )
-                              : ElevatedButton(
-                                  onPressed: () {
-                                    widget.bleManager
-                                        .reset1984ImmobiliserCodeRead();
-                                  },
-                                  child: Text('Clear'),
-                                );
+                          if (snapshot.data! == -100000) {
+                            return ElevatedButton(
+                              onPressed: () {
+                                widget.bleManager.readImmobiliserCodeFrom1984();
+                              },
+                              child: Text('Read'),
+                            );
+                          }
+                          if (snapshot.data! > 0) {
+                            return ElevatedButton(
+                              onPressed: () {
+                                widget.bleManager
+                                    .reset1984ImmobiliserCodeRead();
+                              },
+                              child: Text('Reset'),
+                            );
+                          }
+                          return ElevatedButton(
+                            onPressed: () {
+                              widget.bleManager.reset1984ImmobiliserCodeRead();
+                            },
+                            child: Text('Cancel'),
+                          );
                         })
                   ],
                 ),

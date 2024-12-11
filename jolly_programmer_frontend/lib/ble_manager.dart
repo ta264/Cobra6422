@@ -195,6 +195,7 @@ class BLEManager {
     _subscribeToProgrammerTouchKeyCharacteristic();
     _subscribeToCobraTouchKeyCharacteristic();
     _subscribeToImmobiliserCharacteristic();
+    _subscribeTo1984CodeCharacteristic();
     _subscribeToEepromCharacteristic();
   }
 
@@ -337,17 +338,16 @@ class BLEManager {
         _programmerTouchKeys)); // Notify listeners with a new instance
   }
 
-  // Subscribe to the c1984Code characteristic.  This triggers the programmer
-  // to brute force the code from the 1984.
+  // Subscribe to the c1984Code characteristic.
   // The code characteristic will give negative numbers as progress and then
   // show the code as a positive.
-  Future<void> readImmobiliserCodeFrom1984() async {
+  Future<void> _subscribeTo1984CodeCharacteristic() async {
     if (_1984CodeCharacteristic != null) {
       final subscription =
           _1984CodeCharacteristic!.onValueReceived.listen((value) {
         if (value.isNotEmpty) {
           _latest1984Code = convertBytesToSignedIntLE(value);
-          print('Got code: $_latest1984Code');
+          print('Got 1984 code: $_latest1984Code');
 
           _c1984CodeController.add(_latest1984Code);
         }
@@ -359,10 +359,17 @@ class BLEManager {
     }
   }
 
+  Future<void> readImmobiliserCodeFrom1984() async {
+    if (_1984CodeCharacteristic != null) {
+      await _1984CodeCharacteristic!
+          .write(convertIntToBytesLE(-100000), withoutResponse: false);
+    }
+  }
+
   Future<void> reset1984ImmobiliserCodeRead() async {
     if (_1984CodeCharacteristic != null) {
-      await _1984CodeCharacteristic!.setNotifyValue(false);
-      _c1984CodeController.add(-101);
+      await _1984CodeCharacteristic!
+          .write(convertIntToBytesLE(-100001), withoutResponse: false);
     }
   }
 

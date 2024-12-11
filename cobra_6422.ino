@@ -5,6 +5,12 @@
 #include "Cobra1984.h"
 #include "Cobra6422.h"
 
+enum Command1984 {
+  START = -100000,
+  RESET = -100001,
+  ALREADY_MOBILISED = -100002
+};
+
 // Microwire needs four wires (apart from VCC/GND) DO,DI,CS,CLK
 // configure them here, note that DO and DI are the pins of the
 // EEPROM, so DI is an output of the uC, while DO is an input
@@ -24,7 +30,6 @@ OneWire net(pTouchKey);
 const int pCode = 5;
 const int pTest = 6;
 Cobra1984 c1984(pCode, pTest);
-int c1984status = -1;
 
 // Touchkey service to read new touchkeys for writing to cobra
 //   Key read
@@ -57,7 +62,7 @@ BLEDescriptor immobDescriptor("2901","6422 Immobiliser Code");
 const char* COBRA_1984_SERVICE_UUID = "eb3df65a-06e3-4a42-b790-73b5caea9dc9";
 const char* C1984_CODE_CHARACTERISTIC_UUID = "d0ca177f-e266-4554-9dbb-1a0ca97c90c4";
 BLEService cobra1984Service(COBRA_1984_SERVICE_UUID);
-BLEIntCharacteristic c1984CodeCharacteristic(C1984_CODE_CHARACTERISTIC_UUID, BLERead | BLENotify);
+BLEIntCharacteristic c1984CodeCharacteristic(C1984_CODE_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify);
 BLEDescriptor c1984CodeDescriptor("2901","1984 Immobiliser Code");
 
 void setup() {
@@ -105,7 +110,7 @@ void setup() {
   // 1984
   c1984CodeCharacteristic.addDescriptor(c1984CodeDescriptor);
   c1984CodeCharacteristic.writeValue(0);
-  c1984CodeCharacteristic.setEventHandler(BLESubscribed, c1984CodeSubscribed);
+  c1984CodeCharacteristic.setEventHandler(BLEWritten, c1984CodeWritten);
   cobra1984Service.addCharacteristic(c1984CodeCharacteristic);
 
   BLE.addService(cobra1984Service);
@@ -138,19 +143,21 @@ void readTouchKey() {
 }
 
 void do1984loop() {
-  if (c1984status > 0) {
-    if (c1984.test_next_code()) {
-      c1984CodeCharacteristic.writeValue(c1984.currentCode);
-      c1984status = -1;
-    } else {
-      float progress = c1984.currentCode * -100 / (float)c1984.MAX_CODE;
-      c1984CodeCharacteristic.writeValue(progress);
-      Serial.print(progress);
-      Serial.println("%");
+  if (c1984.get_status() == RUNNING) {
+    for (int i = 0; i < 10; i++) { 
+      if (c1984.test_next_code()) {
+        c1984CodeCharacteristic.writeValue(c1984.currentCode);
+        return;
+      } 
     }
+    
+    float progress = c1984.currentCode * -100 / (float)c1984.MAX_CODE;
+    c1984CodeCharacteristic.writeValue(progress);
+    Serial.print(progress);
+    Serial.print("% ");
+    Serial.println(c1984.currentCode);
   }
 }
-
 
 void loop() {
   BLE.poll();
@@ -239,14 +246,28 @@ void immobWritten(BLEDevice central, BLECharacteristic characteristic)
   updateData();
 }
 
-void c1984CodeSubscribed(BLEDevice central, BLECharacteristic characteristic)
+void c1984CodeWritten(BLEDevice central, BLECharacteristic characteristic)
 {
-  Serial.println("Detected immob code subscribe, brute forcing.");
+  int value = c1984CodeCharacteristic.value();
+  Serial.print("Detected immob code write: ");
+  Serial.println(value);
 
-  if (c1984.setup_brute_force()) {
-    c1984status = 1;
-  } else {
-    c1984CodeCharacteristic.writeValue(-999);
+  Command1984 command = static_cast<Command1984>(value);
+  Serial.print("Cast to: ");
+  Serial.println(command);
+
+  switch(command) {
+    case START:
+      if (!c1984.run_brute_force()) {
+        c1984CodeCharacteristic.writeValue(ALREADY_MOBILISED);
+      }
+      break;
+    case RESET:
+      c1984.reset_brute_force();
+      c1984CodeCharacteristic.writeValue(START);
+      break;
+    default:
+      Serial.println("Unknown 1984 command");
   }
 }
 

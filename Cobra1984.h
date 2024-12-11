@@ -1,8 +1,16 @@
+enum Status1984 {
+  STANDARD,
+  RUNNING,
+  CODE_FOUND,
+  CODE_NOT_FOUND
+};
+
 class Cobra1984
 {
   private:
     int pCode;
     int pTest;
+    Status1984 status;
     
     
     void getBits(uint8_t code[], bool bits[]);
@@ -14,8 +22,9 @@ class Cobra1984
     int currentCode;
 
     Cobra1984(int code_pin, int test_pin);
-    bool setup_brute_force();
-    int BruteForce(void (*progressCallback)(float));
+    Status1984 get_status() { return status; }
+    bool run_brute_force();
+    void reset_brute_force();
     bool test_code(int32_t code);
     bool test_next_code();
     static void encode_arg1(int32_t arg1, uint8_t result[]);
@@ -26,7 +35,7 @@ Cobra1984::Cobra1984(int code_pin, int test_pin)
 {
   this->pCode = code_pin;
   this->pTest = test_pin;
-  this->currentCode = 300;
+  this->currentCode = -1;
 }
 
 // Function to encode arg1 into the result array
@@ -184,16 +193,26 @@ bool Cobra1984::test_code(int32_t code)
 
     // check if the relay has activated
     PinStatus test = digitalRead(pTest);
-    return (test == LOW);
+    if (test == LOW) {
+      status = CODE_FOUND;
+      return true;
+    }
+
+    return false;
 }
 
 bool Cobra1984::test_next_code()
 {
-  currentCode = (currentCode + 1) % MAX_CODE;
+  currentCode++;
+  if (currentCode > MAX_CODE) {
+    status = CODE_NOT_FOUND;
+    return false;
+  }
+
   return test_code(currentCode);
 }
 
-bool Cobra1984::setup_brute_force()
+bool Cobra1984::run_brute_force()
 {
   digitalWrite(pCode, LOW);
   pinMode(pCode, OUTPUT);
@@ -206,23 +225,14 @@ bool Cobra1984::setup_brute_force()
     return false;
   }
 
+  Serial.println("Beginning 1984 code brute force");
+
+  status = RUNNING;
   return true;
 }
 
-int Cobra1984::BruteForce(void (*progressCallback)(float))
+void Cobra1984::reset_brute_force()
 {
-  progressCallback(0);
-
-  for (int32_t code = 300; code < MAX_CODE + 300; code++)
-  {
-    progressCallback((float)code/(float)MAX_CODE);
-    if (test_code(code))
-    {
-      progressCallback(100);
-      Serial.print("Code is: ");
-      Serial.println((code % MAX_CODE) + MAX_CODE);
-      return (code % MAX_CODE) + MAX_CODE;
-      break;
-    }
-  }
+  currentCode = -1;
+  status = STANDARD;
 }
