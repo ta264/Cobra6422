@@ -8,7 +8,8 @@
 enum Command1984 {
   START = -100000,
   RESET = -100001,
-  ALREADY_MOBILISED = -100002
+  ALREADY_MOBILISED = -100002,
+  CHECKED_ALL_CODES = -100003
 };
 
 // Microwire needs four wires (apart from VCC/GND) DO,DI,CS,CLK
@@ -156,6 +157,10 @@ void do1984loop() {
     Serial.print(progress);
     Serial.print("% ");
     Serial.println(c1984.currentCode);
+  }
+
+  if (c1984.get_status() == CODE_NOT_FOUND) {
+    c1984CodeCharacteristic.writeValue(CHECKED_ALL_CODES);
   }
 }
 

@@ -5,14 +5,13 @@ enum Status1984 {
   CODE_NOT_FOUND
 };
 
-class Cobra1984
-{
+class Cobra1984 {
   private:
     int pCode;
     int pTest;
     Status1984 status;
-    
-    
+
+
     void getBits(uint8_t code[], bool bits[]);
     void emitCode(bool bits[]);
 
@@ -22,7 +21,9 @@ class Cobra1984
     int currentCode;
 
     Cobra1984(int code_pin, int test_pin);
-    Status1984 get_status() { return status; }
+    Status1984 get_status() {
+      return status;
+    }
     bool run_brute_force();
     void reset_brute_force();
     bool test_code(int32_t code);
@@ -31,8 +32,7 @@ class Cobra1984
     static int32_t decode_result(const uint8_t result[]);
 };
 
-Cobra1984::Cobra1984(int code_pin, int test_pin)
-{
+Cobra1984::Cobra1984(int code_pin, int test_pin) {
   this->pCode = code_pin;
   this->pTest = test_pin;
   this->currentCode = -1;
@@ -42,14 +42,14 @@ Cobra1984::Cobra1984(int code_pin, int test_pin)
 void Cobra1984::encode_arg1(int32_t arg1, uint8_t result[]) {
   int32_t byte_index = 0;
   int32_t bit_position = 0;
-  
+
   // Modulo operation
   arg1 = arg1 % MAX_CODE;
-  
+
   while (arg1 != 0) {
     uint32_t remainder = arg1 % 3;
     char encoded_value;
-    
+
     // Map remainder to encoded_value
     if (remainder == 0)
       encoded_value = 0;
@@ -57,7 +57,7 @@ void Cobra1984::encode_arg1(int32_t arg1, uint8_t result[]) {
       encoded_value = 3;
     else if (remainder == 2)
       encoded_value = 1;
-    
+
     // Pack encoded_value into the appropriate byte in the result array
     if (bit_position >= 0 && bit_position <= 3) {
       switch (bit_position) {
@@ -75,11 +75,11 @@ void Cobra1984::encode_arg1(int32_t arg1, uint8_t result[]) {
           break;
       }
     }
-    
+
     // Update arg1 and bit_position
     arg1 = arg1 / 3;
     bit_position = (bit_position + 1) % 4;
-    
+
     // Move to the next byte if bit_position loops back to 0
     if (bit_position == 0)
       byte_index += 1;
@@ -92,10 +92,10 @@ int32_t Cobra1984::decode_result(const uint8_t result[]) {
   int32_t multiplier = 1;
   int32_t byte_index = 0;
   int32_t bit_position = 0;
-  
+
   while (byte_index < 3 && (byte_index != 3 || result[byte_index] != 0)) {
     char extracted_value;
-    
+
     // Extract the relevant bits from the current byte
     if (bit_position >= 0 && bit_position <= 3) {
       switch (bit_position) {
@@ -113,7 +113,7 @@ int32_t Cobra1984::decode_result(const uint8_t result[]) {
           break;
       }
     }
-    
+
     // Map extracted_value back to its original modulo 3 result
     int32_t remainder;
     if (extracted_value == 0)
@@ -123,86 +123,75 @@ int32_t Cobra1984::decode_result(const uint8_t result[]) {
     else if (extracted_value == 1)
       remainder = 2;
     else
-      remainder = -1; // This shouldn't happen
-    
+      remainder = -1;  // This shouldn't happen
+
     // Add the contribution of this part to arg1
     arg1 += remainder * multiplier;
     multiplier *= 3;
-    
+
     // Update bit_position
     bit_position = (bit_position + 1) % 4;
-    
+
     // Move to the next byte if bit_position loops back to 0
     if (bit_position == 0)
       byte_index += 1;
   }
-  
+
   return arg1 + MAX_CODE;
 }
 
-void Cobra1984::getBits(uint8_t code[], bool bits[])
-{
-  for (int i = 0; i < 8; i++)
-  {
+void Cobra1984::getBits(uint8_t code[], bool bits[]) {
+  for (int i = 0; i < 8; i++) {
     bits[i] = (code[0] >> i) & 1;
   }
-  for (int i = 0; i < 8; i++)
-  {
+  for (int i = 0; i < 8; i++) {
     bits[8 + i] = (code[1] >> i) & 1;
   }
-  for (int i = 0; i < 2; i++)
-  {
+  for (int i = 0; i < 2; i++) {
     bits[16 + i] = (code[2] >> i) & 1;
   }
 }
 
-void Cobra1984::emitCode(bool bits[])
-{
-  for (int i = 0; i < 18; i++)
-  {
-    if (bits[i])
-    {
+void Cobra1984::emitCode(bool bits[]) {
+  for (int i = 0; i < 18; i++) {
+    if (bits[i]) {
       digitalWrite(pCode, LOW);
-      delayMicroseconds(263); // measured 276, shortened by 13
+      delayMicroseconds(263);  // measured 276, shortened by 13
       digitalWrite(pCode, HIGH);
-      delayMicroseconds(77); // measured 88, shortened 5
-    }
-    else
-    {
+      delayMicroseconds(77);  // measured 88, shortened 5
+    } else {
       digitalWrite(pCode, LOW);
-      delayMicroseconds(39); // measured 42, shortened 4
+      delayMicroseconds(39);  // measured 42, shortened 4
       digitalWrite(pCode, HIGH);
-      delayMicroseconds(301); // measured 317, shortened 18
+      delayMicroseconds(301);  // measured 317, shortened 18
     }
   }
 }
 
-bool Cobra1984::test_code(int32_t code)
-{
-  uint8_t data[3] = {0, 0, 0};
-    encode_arg1(code, data);
+bool Cobra1984::test_code(int32_t code) {
+  uint8_t data[3] = { 0, 0, 0 };
+  encode_arg1(code, data);
 
-    bool bits[18];
-    getBits(data, bits);
+  bool bits[18];
+  getBits(data, bits);
 
-    // the code needs to be sent 3 times for the 1984 to recognise it, with a 1ms delay between each
-    for (int p = 0; p < 3; p++) {
-      emitCode(bits);
-      delayMicroseconds(1000);
-    }
+  // the code needs to be sent 3 times for the 1984 to recognise it, with a 1ms delay between each
+  for (int p = 0; p < 3; p++) {
+    emitCode(bits);
+    delayMicroseconds(1000);
+  }
 
-    // check if the relay has activated
-    PinStatus test = digitalRead(pTest);
-    if (test == LOW) {
-      status = CODE_FOUND;
-      return true;
-    }
+  // check if the relay has activated
+  PinStatus test = digitalRead(pTest);
+  if (test == LOW) {
+    status = CODE_FOUND;
+    return true;
+  }
 
-    return false;
+  return false;
 }
 
-bool Cobra1984::test_next_code()
-{
+bool Cobra1984::test_next_code() {
   currentCode++;
   if (currentCode > MAX_CODE) {
     status = CODE_NOT_FOUND;
@@ -212,15 +201,13 @@ bool Cobra1984::test_next_code()
   return test_code(currentCode);
 }
 
-bool Cobra1984::run_brute_force()
-{
+bool Cobra1984::run_brute_force() {
   digitalWrite(pCode, LOW);
   pinMode(pCode, OUTPUT);
   pinMode(pTest, INPUT_PULLUP);
 
   PinStatus test = digitalRead(pTest);
-  if (test == LOW)
-  {
+  if (test == LOW) {
     Serial.println("Error: 1984 already mobilised.  Power cycle it and try again.");
     return false;
   }
@@ -231,8 +218,7 @@ bool Cobra1984::run_brute_force()
   return true;
 }
 
-void Cobra1984::reset_brute_force()
-{
+void Cobra1984::reset_brute_force() {
   currentCode = -1;
   status = STANDARD;
 }

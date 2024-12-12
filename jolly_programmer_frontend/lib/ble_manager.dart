@@ -42,7 +42,7 @@ class BLEManager {
   List<List<int>> _programmerTouchKeys = [];
   List<int> _latestEepromValue = [];
   int _latestImmobiliserCode = 0;
-  int _latest1984Code = -101;
+  int _latest1984Code = -100000;
 
   // Stream controllers for the cobraTouchKey characteristic and programmerTouchKeys
   final StreamController<List<int>> _latestCobraValueController =

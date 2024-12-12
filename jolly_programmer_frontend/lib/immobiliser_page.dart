@@ -155,6 +155,13 @@ class _ImmobiliserPageState extends State<ImmobiliserPage> {
                           });
                           return SizedBox.shrink();
                         }
+                        if (snapshot.data! == -100003) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            widget.bleManager.reset1984ImmobiliserCodeRead();
+                            _showErrorDialog("Code not detected.");
+                          });
+                          return SizedBox.shrink();
+                        }
                         if (snapshot.data! <= 0) {
                           return LinearProgressIndicator(
                             value: (snapshot.data! * -1) / 100,
