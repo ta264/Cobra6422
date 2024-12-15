@@ -9,6 +9,9 @@ class Cobra6422
     int pDO = 10;
     int pProg = 8;
 
+    bool hasData = false;
+    unsigned long previousRead = 0;
+
     uint16_t encodeKeyCount(uint16_t keyCount);
     void getNewImmobiliserData(int code, uint16_t memory[]);
 
@@ -24,6 +27,8 @@ class Cobra6422
 
     Cobra6422(int cs_pin, int clk_pin, int di_pin, int do_pin, int prog_pin);
     void read();
+    bool getHasData();
+    unsigned long getPreviousRead();
     int getKeyCount();
     void readKeys(uint16_t keys[][3]);
     void writeKeys(int keyCount, uint16_t keys[][3]);
@@ -39,16 +44,35 @@ Cobra6422::Cobra6422(int cs_pin, int clk_pin, int di_pin, int do_pin, int prog_p
   this->pDI = di_pin;
   this->pDO = do_pin;
   this->pProg = prog_pin;
-
-  //read();
 }
 
 void Cobra6422::read()
 {
+  hasData = false;
   MicrowireEEPROM ME(pCS, pCLK, pDI, pDO, pProg);
 
   for (int addr = 0; addr < 64; addr++)
     eeprom[addr] = ME.read(addr);
+
+  for (int addr = 0; addr < 64; addr++)
+  {
+    if (eeprom[addr] != 0) {
+      hasData = true;
+      break;
+    }
+  }
+
+  previousRead = millis();
+}
+
+bool Cobra6422::getHasData()
+{
+  return hasData;
+}
+
+unsigned long Cobra6422::getPreviousRead()
+{
+  return previousRead;
 }
 
 int Cobra6422::getKeyCount()
