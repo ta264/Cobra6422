@@ -52,6 +52,12 @@ class _ImmobiliserPageState extends State<ImmobiliserPage> {
                   stream: widget.bleManager.immobiliserStream,
                   initialData: widget.bleManager.latestImmobiliserCode,
                   builder: (context, snapshot) {
+                    String text = snapshot.data! == 0
+                        ? 'No data yet'
+                        : snapshot.data!.toString();
+                    TextStyle? style = snapshot.data! == 0
+                        ? TextStyle(fontSize: 16)
+                        : TextStyle(fontSize: 32, fontWeight: FontWeight.bold);
                     return Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -62,9 +68,8 @@ class _ImmobiliserPageState extends State<ImmobiliserPage> {
                         ),
                         SizedBox(height: 10),
                         Text(
-                          snapshot.data!.toString(),
-                          style: TextStyle(
-                              fontSize: 32, fontWeight: FontWeight.bold),
+                          text,
+                          style: style,
                           textAlign: TextAlign.center,
                         ),
                       ],
