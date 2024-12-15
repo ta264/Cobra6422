@@ -35,7 +35,7 @@ class Cobra1984 {
 Cobra1984::Cobra1984(int code_pin, int test_pin) {
   this->pCode = code_pin;
   this->pTest = test_pin;
-  this->currentCode = -1;
+  this->currentCode = MAX_CODE;
 }
 
 // Function to encode arg1 into the result array
@@ -193,7 +193,7 @@ bool Cobra1984::test_code(int32_t code) {
 
 bool Cobra1984::test_next_code() {
   currentCode++;
-  if (currentCode > MAX_CODE) {
+  if (currentCode > 2 * MAX_CODE) {
     status = CODE_NOT_FOUND;
     return false;
   }
@@ -219,6 +219,6 @@ bool Cobra1984::run_brute_force() {
 }
 
 void Cobra1984::reset_brute_force() {
-  currentCode = -1;
+  currentCode = MAX_CODE;
   status = STANDARD;
 }

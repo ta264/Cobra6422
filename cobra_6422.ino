@@ -157,7 +157,7 @@ void do1984loop() {
       }
     }
 
-    float progress = c1984.currentCode * -100 / (float)c1984.MAX_CODE;
+    float progress = (c1984.currentCode - c1984.MAX_CODE) * -100 / (float)c1984.MAX_CODE;
     c1984CodeCharacteristic.writeValue(progress);
     Serial.print(progress);
     Serial.print("% ");
