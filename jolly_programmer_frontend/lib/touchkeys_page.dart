@@ -7,7 +7,7 @@ class TouchKeysPage extends StatefulWidget {
   const TouchKeysPage({Key? key, required this.bleManager}) : super(key: key);
 
   @override
-  _TouchKeysPageState createState() => _TouchKeysPageState();
+  TouchKeysPageState createState() => TouchKeysPageState();
 }
 
 String formatCobraValue(List<int> hexBytes) {
@@ -38,12 +38,12 @@ String formatCobraValue(List<int> hexBytes) {
   return formattedLines.join('\n');
 }
 
-class _TouchKeysPageState extends State<TouchKeysPage> {
+class TouchKeysPageState extends State<TouchKeysPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Touch Keys'),
+        title: const Text('Touch Keys'),
       ),
       body: Column(
         children: [
@@ -65,15 +65,15 @@ class _TouchKeysPageState extends State<TouchKeysPage> {
                     return Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
+                        const Text(
                           'Stored Touch Keys',
                           style: TextStyle(fontSize: 18),
                         ),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
                         Text(
                           text,
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 16),
+                          style: const TextStyle(fontSize: 16),
                         ),
                       ],
                     );
@@ -91,8 +91,8 @@ class _TouchKeysPageState extends State<TouchKeysPage> {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
+                    const Padding(
+                      padding: EdgeInsets.all(16.0),
                       child: Text(
                         'New Touch Keys',
                         style: TextStyle(fontSize: 18),
@@ -112,18 +112,18 @@ class _TouchKeysPageState extends State<TouchKeysPage> {
                                       padding: const EdgeInsets.symmetric(
                                           vertical: 2.0),
                                       child: Container(
-                                        padding: EdgeInsets.symmetric(
+                                        padding: const EdgeInsets.symmetric(
                                             horizontal: 8.0),
                                         child: Text(
                                           formatCobraValue(touchKeys[index]),
                                           textAlign: TextAlign.center,
-                                          style: TextStyle(fontSize: 16),
+                                          style: const TextStyle(fontSize: 16),
                                         ),
                                       ),
                                     );
                                   },
                                 )
-                              : Center(
+                              : const Center(
                                   child: Text(
                                     'Touch new key to reader',
                                     style: TextStyle(
@@ -134,20 +134,20 @@ class _TouchKeysPageState extends State<TouchKeysPage> {
                         },
                       ),
                     ),
-                    SizedBox(height: 10),
+                    const SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         ElevatedButton(
                           onPressed: widget.bleManager.clearProgrammerTouchKeys,
-                          child: Text('Clear'),
+                          child: const Text('Clear'),
                         ),
                         ElevatedButton(
                           onPressed: () {
                             // Write the new touch keys
                             widget.bleManager.programmerTouchKeyWriteToCobra();
                           },
-                          child: Text('Write'),
+                          child: const Text('Write'),
                         ),
                       ],
                     ),

@@ -107,7 +107,7 @@ class BLEManager {
       _connectedDevice = device;
 
       // Listen for connection state changes
-      _connectedDevice!.state.listen((state) {
+      _connectedDevice!.connectionState.listen((state) {
         if (state == BluetoothConnectionState.connected) {
           _connectionStateController.add(true); // Emit connected state
           _isReconnecting = false;

@@ -11,7 +11,7 @@ class BackupPage extends StatefulWidget {
   const BackupPage({Key? key, required this.bleManager}) : super(key: key);
 
   @override
-  _BackupPageState createState() => _BackupPageState();
+  BackupPageState createState() => BackupPageState();
 }
 
 String formatCobraValue(List<int> hexBytes) {
@@ -27,8 +27,7 @@ String formatCobraValue(List<int> hexBytes) {
   }
   return formattedLines.join('\n');
 }
-
-class _BackupPageState extends State<BackupPage> {
+class BackupPageState extends State<BackupPage> {
   // Method to get the directory for Android's Downloads folder
   Future<String> _getDownloadsDirectory() async {
     Directory? downloadsDir = await getExternalStorageDirectory();
@@ -89,7 +88,7 @@ class _BackupPageState extends State<BackupPage> {
       } else {
         // User canceled the file picker
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('File selection canceled.')),
+          const SnackBar(content: Text('File selection canceled.')),
         );
       }
     } catch (e) {
@@ -103,7 +102,7 @@ class _BackupPageState extends State<BackupPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Backup'),
+        title: const Text('Backup'),
       ),
       body: Column(
         children: [
@@ -121,17 +120,17 @@ class _BackupPageState extends State<BackupPage> {
                     return Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
+                        const Text(
                           'EEPROM contents',
                           style: TextStyle(fontSize: 18),
                         ),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
                         Text(
                           snapshot.data!.isNotEmpty
                               ? formatCobraValue(snapshot.data!)
                               : 'No data yet',
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 16),
+                          style: const TextStyle(fontSize: 16),
                         ),
                       ],
                     );
@@ -151,11 +150,11 @@ class _BackupPageState extends State<BackupPage> {
                   _saveEEPROMToFile(eepromData);
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('No EEPROM data to save.')),
+                    const SnackBar(content: Text('No EEPROM data to save.')),
                   );
                 }
               },
-              child: Text('Save EEPROM to File'),
+              child: const Text('Save EEPROM to File'),
             ),
           ),
 
@@ -164,7 +163,7 @@ class _BackupPageState extends State<BackupPage> {
             padding: const EdgeInsets.all(8.0),
             child: ElevatedButton(
               onPressed: _loadAndWriteEEPROM,
-              child: Text('Load EEPROM from File and Write'),
+              child: const Text('Load EEPROM from File and Write'),
             ),
           ),
         ],

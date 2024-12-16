@@ -7,10 +7,10 @@ class ImmobiliserPage extends StatefulWidget {
   const ImmobiliserPage({Key? key, required this.bleManager}) : super(key: key);
 
   @override
-  _ImmobiliserPageState createState() => _ImmobiliserPageState();
+  ImmobiliserPageState createState() => ImmobiliserPageState();
 }
 
-class _ImmobiliserPageState extends State<ImmobiliserPage> {
+class ImmobiliserPageState extends State<ImmobiliserPage> {
   final TextEditingController _controller = TextEditingController();
   int _newImmobiliserCode = 0;
 
@@ -19,14 +19,14 @@ class _ImmobiliserPageState extends State<ImmobiliserPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Error'),
+        title: const Text('Error'),
         content: Text(errorMessage),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.of(context).pop(); // Close the dialog
             },
-            child: Text('OK'),
+            child: const Text('OK'),
           ),
         ],
       ),
@@ -37,7 +37,7 @@ class _ImmobiliserPageState extends State<ImmobiliserPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Immobiliser'),
+        title: const Text('Immobiliser'),
       ),
       body: Column(
         children: [
@@ -56,17 +56,17 @@ class _ImmobiliserPageState extends State<ImmobiliserPage> {
                         ? 'No data yet'
                         : snapshot.data!.toString();
                     TextStyle? style = snapshot.data! == 0
-                        ? TextStyle(fontSize: 16)
-                        : TextStyle(fontSize: 32, fontWeight: FontWeight.bold);
+                        ? const TextStyle(fontSize: 16)
+                        : const TextStyle(fontSize: 32, fontWeight: FontWeight.bold);
                     return Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
+                        const Text(
                           'Current Immobiliser Code',
                           style: TextStyle(fontSize: 18),
                           textAlign: TextAlign.center,
                         ),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
                         Text(
                           text,
                           style: style,
@@ -89,16 +89,16 @@ class _ImmobiliserPageState extends State<ImmobiliserPage> {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    Text(
+                    const Text(
                       'Write Immobiliser Code',
                       style: TextStyle(fontSize: 18),
                       textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: 10),
+                    const SizedBox(height: 10),
                     TextField(
                       controller: _controller,
                       keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                         labelText: 'New Code',
                       ),
@@ -109,7 +109,7 @@ class _ImmobiliserPageState extends State<ImmobiliserPage> {
                         });
                       },
                     ),
-                    SizedBox(height: 10),
+                    const SizedBox(height: 10),
                     ElevatedButton(
                       onPressed: () {
                         // Write the new immobiliser code
@@ -122,7 +122,7 @@ class _ImmobiliserPageState extends State<ImmobiliserPage> {
                         // Remove the focus to hide the keyboard
                         FocusScope.of(context).unfocus();
                       },
-                      child: Text('Write'),
+                      child: const Text('Write'),
                     ),
                   ],
                 ),
@@ -140,17 +140,17 @@ class _ImmobiliserPageState extends State<ImmobiliserPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
+                    const Text(
                       'Read Immobiliser Code from 1984',
                       style: TextStyle(fontSize: 18),
                     ),
-                    SizedBox(height: 10),
+                    const SizedBox(height: 10),
                     StreamBuilder<int>(
                       stream: widget.bleManager.c1984CodeStream,
                       initialData: -100000,
                       builder: (context, snapshot) {
                         if (snapshot.data! == -100000) {
-                          return SizedBox.shrink();
+                          return const SizedBox.shrink();
                         }
                         if (snapshot.data! == -100002) {
                           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -158,31 +158,31 @@ class _ImmobiliserPageState extends State<ImmobiliserPage> {
                             _showErrorDialog(
                                 "1984 already mobilised. Power cycle it and try again.");
                           });
-                          return SizedBox.shrink();
+                          return const SizedBox.shrink();
                         }
                         if (snapshot.data! == -100003) {
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             widget.bleManager.reset1984ImmobiliserCodeRead();
                             _showErrorDialog("Code not detected.");
                           });
-                          return SizedBox.shrink();
+                          return const SizedBox.shrink();
                         }
                         if (snapshot.data! <= 0) {
                           return LinearProgressIndicator(
                             value: (snapshot.data! * -1) / 100,
                             backgroundColor: Colors.grey[300],
                             valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.blue),
+                                const AlwaysStoppedAnimation<Color>(Colors.blue),
                           );
                         } else {
                           return Text(snapshot.data!.toString(),
-                              style: TextStyle(
+                              style: const TextStyle(
                                   fontSize: 32, fontWeight: FontWeight.bold),
                               textAlign: TextAlign.center);
                         }
                       },
                     ),
-                    SizedBox(height: 10),
+                    const SizedBox(height: 10),
                     StreamBuilder<int>(
                         stream: widget.bleManager.c1984CodeStream,
                         initialData: -100000,
@@ -192,7 +192,7 @@ class _ImmobiliserPageState extends State<ImmobiliserPage> {
                               onPressed: () {
                                 widget.bleManager.readImmobiliserCodeFrom1984();
                               },
-                              child: Text('Read'),
+                              child: const Text('Read'),
                             );
                           }
                           if (snapshot.data! > 0) {
@@ -201,14 +201,14 @@ class _ImmobiliserPageState extends State<ImmobiliserPage> {
                                 widget.bleManager
                                     .reset1984ImmobiliserCodeRead();
                               },
-                              child: Text('Reset'),
+                              child: const Text('Reset'),
                             );
                           }
                           return ElevatedButton(
                             onPressed: () {
                               widget.bleManager.reset1984ImmobiliserCodeRead();
                             },
-                            child: Text('Cancel'),
+                            child: const Text('Cancel'),
                           );
                         })
                   ],
