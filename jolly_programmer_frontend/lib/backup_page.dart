@@ -1,7 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import 'dart:io';
-import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import 'ble_manager.dart';
 
@@ -27,33 +27,37 @@ String formatCobraValue(List<int> hexBytes) {
   }
   return formattedLines.join('\n');
 }
-class BackupPageState extends State<BackupPage> {
-  // Method to get the directory for Android's Downloads folder
-  Future<String> _getDownloadsDirectory() async {
-    Directory? downloadsDir = await getExternalStorageDirectory();
-    return downloadsDir!.path;
-  }
 
+class BackupPageState extends State<BackupPage> {
   // Method to save EEPROM data to a file in a user-accessible location
   Future<void> _saveEEPROMToFile(List<int> eepromData) async {
     try {
       // Get the current date and time in ISO format
       final String isoTimestamp =
           DateTime.now().toIso8601String().replaceAll(':', '-');
-      final path = await _getDownloadsDirectory();
-      final filePath = '$path/eeprom_backup_$isoTimestamp.bin';
 
-      File file = File(filePath);
-      await file.writeAsBytes(eepromData);
+      String? outputFile = await FilePicker.platform.saveFile(
+          dialogTitle: 'Choose backup file location',
+          fileName: '6422_backup_$isoTimestamp.bin',
+          bytes: Uint8List.fromList(eepromData));
+
+      if (outputFile == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Save cancelled')),
+        );
+        return;
+      }
+
+      // on Android the file save is done by the picker
+      // Otherwise we have to save ourself
+      if (!Platform.isAndroid) {
+        File file = File(outputFile);
+        await file.writeAsBytes(eepromData);
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('EEPROM data saved to $filePath')),
+        SnackBar(content: Text('EEPROM data saved to $outputFile')),
       );
-
-      // If on iOS, trigger the share functionality using share_plus
-      //if (Platform.isIOS) {
-      await Share.shareXFiles([XFile(filePath)], text: 'Backup of EEPROM data');
-      //
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to save file: $e')),
@@ -78,13 +82,19 @@ class BackupPageState extends State<BackupPage> {
         // Read the file's contents
         List<int> fileBytes = await file.readAsBytes();
 
-        // Write the file's contents to the EEPROM characteristic
-        widget.bleManager.writeEEPROM(fileBytes);
-
-        // Notify the user of success
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('EEPROM data written from $filePath')),
-        );
+        if (verifyEEPROMData(fileBytes)) {
+          // Write the file's contents to the EEPROM characteristic
+          widget.bleManager.writeEEPROM(fileBytes);
+          // Notify the user of success
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('EEPROM data written from $filePath')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Invalid EEPROM data. Must be 128 bytes.')),
+          );
+        }
       } else {
         // User canceled the file picker
         ScaffoldMessenger.of(context).showSnackBar(
@@ -96,6 +106,12 @@ class BackupPageState extends State<BackupPage> {
         SnackBar(content: Text('Failed to load file: $e')),
       );
     }
+  }
+
+  bool verifyEEPROMData(List<int> eepromData) {
+    // check length is 128 bytes and ints are in range 0-255
+    return eepromData.length == 128 &&
+        eepromData.every((element) => element >= 0 && element <= 255);
   }
 
   @override
