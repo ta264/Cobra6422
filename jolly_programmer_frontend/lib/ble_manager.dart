@@ -85,6 +85,11 @@ class BLEManager {
 
   // Method to start scanning and connect to a BLE device
   Future<void> scanAndConnect() async {
+    // wait for bluetooth to turn on & permission granted
+    await FlutterBluePlus.adapterState
+        .where((state) => state == BluetoothAdapterState.on)
+        .first;
+
     if (_connectedDevice != null) {
       return; // Already connected
     }
