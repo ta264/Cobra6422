@@ -207,26 +207,26 @@ class BLEManager {
   // Subscribe to the cobraTouchKey characteristic
   Future<void> _subscribeToCobraTouchKeyCharacteristic() async {
     if (_cobraTouchKeyCharacteristic != null) {
-      await _cobraTouchKeyCharacteristic!
-          .setNotifyValue(true); // Enable notifications
-
-      _cobraTouchKeyCharacteristic!.lastValueStream.listen((value) {
+      final subscription =
+          _cobraTouchKeyCharacteristic!.onValueReceived.listen((value) {
         if (value.isNotEmpty) {
           _latestCobraValue = value;
           _latestCobraValueController
               .add(_latestCobraValue); // Add latest cobra value to stream
         }
       });
+
+      _connectedDevice!.cancelWhenDisconnected(subscription);
+
+      await _cobraTouchKeyCharacteristic!.setNotifyValue(true);
     }
   }
 
   // Subscribe to the programmerTouchKey characteristic
   Future<void> _subscribeToProgrammerTouchKeyCharacteristic() async {
     if (_programmerTouchKeyCharacteristic != null) {
-      await _programmerTouchKeyCharacteristic!
-          .setNotifyValue(true); // Enable notifications
-
-      _programmerTouchKeyCharacteristic!.lastValueStream.listen((value) {
+      final subscription =
+          _programmerTouchKeyCharacteristic!.onValueReceived.listen((value) {
         if (value.isNotEmpty) {
           // Check if the value differs from the last value
           if (_programmerTouchKeys.isEmpty ||
@@ -241,21 +241,40 @@ class BLEManager {
           }
         }
       });
+
+      _connectedDevice!.cancelWhenDisconnected(subscription);
+
+      await _programmerTouchKeyCharacteristic!.setNotifyValue(true);
     }
   }
 
   // Subscribe to the cobraTouchKey characteristic
   Future<void> _subscribeToEepromCharacteristic() async {
     if (_eepromCharacteristic != null) {
-      await _eepromCharacteristic!.setNotifyValue(true); // Enable notifications
-
-      _eepromCharacteristic!.lastValueStream.listen((value) {
+      final subscription =
+          _eepromCharacteristic!.onValueReceived.listen((value) {
         if (value.isNotEmpty) {
           _latestEepromValue = value;
           _eepromController
               .add(_latestEepromValue); // Add latest cobra value to stream
         }
       });
+
+      _connectedDevice!.cancelWhenDisconnected(subscription);
+
+      await _eepromCharacteristic!.setNotifyValue(true);
+    }
+  }
+
+  // resubscribe to trigger refresh
+  Future<void> refreshData() async {
+    if (_eepromCharacteristic != null) {
+      await _eepromCharacteristic!
+          .setNotifyValue(false); // Enable notifications
+
+      _latestCobraValueController.add([]);
+
+      await _subscribeToEepromCharacteristic();
     }
   }
 
@@ -291,16 +310,18 @@ class BLEManager {
   // Subscribe to the cobraTouchKey characteristic
   Future<void> _subscribeToImmobiliserCharacteristic() async {
     if (_immobiliserCharacteristic != null) {
-      await _immobiliserCharacteristic!
-          .setNotifyValue(true); // Enable notifications
-
-      _immobiliserCharacteristic!.lastValueStream.listen((value) {
+      final subscription =
+          _immobiliserCharacteristic!.onValueReceived.listen((value) {
         if (value.isNotEmpty) {
           _latestImmobiliserCode = convertBytesToSignedIntLE(value);
           _immobiliserController
               .add(_latestImmobiliserCode); // Add latest cobra value to stream
         }
       });
+
+      _connectedDevice!.cancelWhenDisconnected(subscription);
+
+      await _immobiliserCharacteristic!.setNotifyValue(true);
     }
   }
 

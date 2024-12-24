@@ -11,20 +11,11 @@ class TouchKeysPage extends StatefulWidget {
 }
 
 String formatCobraValue(List<int> hexBytes) {
-  // Split the latestCobraValue into a list of hex byte strings (2 chars per byte)
   List<String> formattedLines = [];
-
-  // Iterate over the hexBytes in chunks of 8 bytes
   for (int i = 0; i < hexBytes.length; i += 8) {
-    // Get a chunk of 8 bytes
     List<int> chunk = hexBytes.sublist(i, i + 8);
-
-    // Check if all bytes in the chunk are '00'
     bool allZeroes = chunk.every((byte) => byte == 0);
-
-    // Only add the line if not all 6 bytes are zero
     if (!allZeroes) {
-      // Join the chunk back into a line and add to the result
       formattedLines.add(chunk
           .sublist(1, 7)
           .map((e) => e.toRadixString(16).padLeft(2, '0').toUpperCase())
@@ -33,59 +24,62 @@ String formatCobraValue(List<int> hexBytes) {
               RegExp(r'([A-F0-9]{4})'), (match) => '${match[1]} '));
     }
   }
-
-  // Join the lines with a newline separator
   return formattedLines.join('\n');
 }
 
 class TouchKeysPageState extends State<TouchKeysPage> {
+  Future<void> _refreshData() async {
+    // Simulate refreshing data (replace this with actual BLE refresh logic)
+    await widget.bleManager.refreshData();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Touch Keys'),
       ),
-      body: Column(
-        children: [
-          // Top half as a Card: Display the most recent value of a characteristic
-          SizedBox(
-            width: double
-                .infinity, // Make the card take the full width of the screen
-            child: Card(
-              margin: const EdgeInsets.all(10),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: StreamBuilder<List<int>>(
-                  stream: widget.bleManager.latestCobraValueStream,
-                  initialData: widget.bleManager.latestCobraValue,
-                  builder: (context, snapshot) {
-                    String text = snapshot.data!.isNotEmpty
-                        ? formatCobraValue(snapshot.data!)
-                        : 'No data yet';
-                    return Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Stored Touch Keys',
-                          style: TextStyle(fontSize: 18),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          text,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      ],
-                    );
-                  },
+      body: RefreshIndicator(
+        onRefresh: _refreshData, // Refresh logic
+        child: ListView(
+          children: [
+            // Top half as a Card: Display the most recent value of a characteristic
+            SizedBox(
+              width: double.infinity,
+              child: Card(
+                margin: const EdgeInsets.all(10),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: StreamBuilder<List<int>>(
+                    stream: widget.bleManager.latestCobraValueStream,
+                    initialData: widget.bleManager.latestCobraValue,
+                    builder: (context, snapshot) {
+                      String text = snapshot.data!.isNotEmpty
+                          ? formatCobraValue(snapshot.data!)
+                          : 'Reading data...';
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'Stored Touch Keys',
+                            style: TextStyle(fontSize: 18),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            text,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // Bottom half as a Card: Display the list of touch keys or a placeholder if empty
-          Expanded(
-            child: Card(
+            // Bottom half as a Card: Display the list of touch keys or a placeholder if empty
+            Card(
               margin: const EdgeInsets.all(10),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -98,39 +92,38 @@ class TouchKeysPageState extends State<TouchKeysPage> {
                         style: TextStyle(fontSize: 18),
                       ),
                     ),
-                    Expanded(
+                    SizedBox(
+                      //height: 200,
                       child: StreamBuilder<List<List<int>>>(
                         stream: widget.bleManager.programmerTouchKeysStream,
                         initialData: widget.bleManager.programmerTouchKeys,
                         builder: (context, snapshot) {
                           final touchKeys = snapshot.data!;
-                          return touchKeys.isNotEmpty
-                              ? ListView.builder(
-                                  itemCount: touchKeys.length,
-                                  itemBuilder: (context, index) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: touchKeys.isNotEmpty
+                                ? touchKeys.map((key) {
                                     return Padding(
                                       padding: const EdgeInsets.symmetric(
                                           vertical: 2.0),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8.0),
-                                        child: Text(
-                                          formatCobraValue(touchKeys[index]),
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(fontSize: 16),
-                                        ),
+                                      child: Text(
+                                        formatCobraValue(key),
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(fontSize: 16),
                                       ),
                                     );
-                                  },
-                                )
-                              : const Center(
-                                  child: Text(
-                                    'Touch new key to reader',
-                                    style: TextStyle(
-                                        fontSize: 16,
-                                        fontStyle: FontStyle.italic),
-                                  ),
-                                );
+                                  }).toList()
+                                : [
+                                    const Center(
+                                      child: Text(
+                                        'Touch new key to reader',
+                                        style: TextStyle(
+                                            fontSize: 16,
+                                            fontStyle: FontStyle.italic),
+                                      ),
+                                    ),
+                                  ],
+                          );
                         },
                       ),
                     ),
@@ -144,7 +137,6 @@ class TouchKeysPageState extends State<TouchKeysPage> {
                         ),
                         ElevatedButton(
                           onPressed: () {
-                            // Write the new touch keys
                             widget.bleManager.programmerTouchKeyWriteToCobra();
                           },
                           child: const Text('Write'),
@@ -155,8 +147,8 @@ class TouchKeysPageState extends State<TouchKeysPage> {
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
