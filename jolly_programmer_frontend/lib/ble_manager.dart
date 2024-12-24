@@ -273,6 +273,8 @@ class BLEManager {
           .setNotifyValue(false); // Enable notifications
 
       _latestCobraValueController.add([]);
+      _immobiliserController.add(0);
+      _eepromController.add([]);
 
       await _subscribeToEepromCharacteristic();
     }

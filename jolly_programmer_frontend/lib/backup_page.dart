@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
@@ -29,10 +28,12 @@ String formatCobraValue(List<int> hexBytes) {
 }
 
 class BackupPageState extends State<BackupPage> {
-  // Method to save EEPROM data to a file in a user-accessible location
+  Future<void> _refreshData() async {
+    await widget.bleManager.refreshData();
+  }
+
   Future<void> _saveEEPROMToFile(List<int> eepromData) async {
     try {
-      // Get the current date and time in ISO format
       final String isoTimestamp =
           DateTime.now().toIso8601String().replaceAll(':', '-');
 
@@ -48,8 +49,6 @@ class BackupPageState extends State<BackupPage> {
         return;
       }
 
-      // on Android the file save is done by the picker
-      // Otherwise we have to save ourself
       if (!Platform.isAndroid) {
         File file = File(outputFile);
         await file.writeAsBytes(eepromData);
@@ -65,27 +64,21 @@ class BackupPageState extends State<BackupPage> {
     }
   }
 
-// Method to load a backup file chosen by the user and write its contents to EEPROM
   Future<void> _loadAndWriteEEPROM() async {
     try {
-      // Open file picker to select a .bin file
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['bin'], // Allow only .bin files
+        allowedExtensions: ['bin'],
       );
 
       if (result != null && result.files.single.path != null) {
-        // Get the selected file path
         final String filePath = result.files.single.path!;
         File file = File(filePath);
 
-        // Read the file's contents
         List<int> fileBytes = await file.readAsBytes();
 
         if (verifyEEPROMData(fileBytes)) {
-          // Write the file's contents to the EEPROM characteristic
           widget.bleManager.writeEEPROM(fileBytes);
-          // Notify the user of success
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('EEPROM data written from $filePath')),
           );
@@ -96,7 +89,6 @@ class BackupPageState extends State<BackupPage> {
           );
         }
       } else {
-        // User canceled the file picker
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('File selection canceled.')),
         );
@@ -109,7 +101,6 @@ class BackupPageState extends State<BackupPage> {
   }
 
   bool verifyEEPROMData(List<int> eepromData) {
-    // check length is 128 bytes and ints are in range 0-255
     return eepromData.length == 128 &&
         eepromData.every((element) => element >= 0 && element <= 255);
   }
@@ -120,69 +111,78 @@ class BackupPageState extends State<BackupPage> {
       appBar: AppBar(
         title: const Text('Backup'),
       ),
-      body: Column(
-        children: [
-          // Top half as a Card: Display the most recent value of a characteristic
-          SizedBox(
-            width: double.infinity,
-            child: Card(
-              margin: const EdgeInsets.all(10),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: StreamBuilder<List<int>>(
-                  stream: widget.bleManager.eepromStream,
-                  initialData: widget.bleManager.latestEepromValue,
-                  builder: (context, snapshot) {
-                    return Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'EEPROM contents',
-                          style: TextStyle(fontSize: 18),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          snapshot.data!.isNotEmpty
-                              ? formatCobraValue(snapshot.data!)
-                              : 'No data yet',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      ],
-                    );
-                  },
+      body: RefreshIndicator(
+        onRefresh: _refreshData,
+        child: ListView(
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: Card(
+                margin: const EdgeInsets.all(10),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: StreamBuilder<List<int>>(
+                    stream: widget.bleManager.eepromStream,
+                    initialData: widget.bleManager.latestEepromValue,
+                    builder: (context, snapshot) {
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'EEPROM contents',
+                            style: TextStyle(fontSize: 18),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            snapshot.data!.isNotEmpty
+                                ? formatCobraValue(snapshot.data!)
+                                : 'Reading data...',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
-          ),
-
-          // "Save" button to save EEPROM contents to a binary file
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: ElevatedButton(
-              onPressed: () {
-                final eepromData = widget.bleManager.latestEepromValue;
-                if (eepromData.isNotEmpty) {
-                  _saveEEPROMToFile(eepromData);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('No EEPROM data to save.')),
-                  );
-                }
-              },
-              child: const Text('Save EEPROM to File'),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      final eepromData = widget.bleManager.latestEepromValue;
+                      if (eepromData.isNotEmpty) {
+                        _saveEEPROMToFile(eepromData);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('No EEPROM data to save.')),
+                        );
+                      }
+                    },
+                    child: const Text('Save EEPROM to File'),
+                  ),
+                ],
+              ),
             ),
-          ),
-
-          // "Load and Write" button to load a binary file and write to the EEPROM
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: ElevatedButton(
-              onPressed: _loadAndWriteEEPROM,
-              child: const Text('Load EEPROM from File and Write'),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: _loadAndWriteEEPROM,
+                    child: const Text('Load EEPROM from File and Write'),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
