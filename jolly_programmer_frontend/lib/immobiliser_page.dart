@@ -14,6 +14,12 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
   final TextEditingController _controller = TextEditingController();
   int _newImmobiliserCode = 0;
 
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   // Function to show an error dialog
   void _showErrorDialog(String errorMessage) {
     showDialog(
@@ -33,7 +39,34 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
     );
   }
 
-  // Refresh data from BLE Manager
+  // Function to show the confirmation dialog
+  void _showCableWarningDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cable to 1984 required!'),
+        content: const Text(
+            'Please ensure the additional cable is connected to the 1984 immobiliser in the engine bay before proceeding.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Close the dialog
+            },
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Close the dialog
+              widget.bleManager.readImmobiliserCodeFrom1984(); // Trigger read
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Pull-to-refresh function
   Future<void> _refreshData() async {
     await widget.bleManager.refreshData();
   }
@@ -197,10 +230,7 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
                           builder: (context, snapshot) {
                             if (snapshot.data! == -100000) {
                               return ElevatedButton(
-                                onPressed: () {
-                                  widget.bleManager
-                                      .readImmobiliserCodeFrom1984();
-                                },
+                                onPressed: _showCableWarningDialog,
                                 child: const Text('Read'),
                               );
                             }
@@ -230,11 +260,5 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
   }
 }
