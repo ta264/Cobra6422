@@ -394,6 +394,13 @@ class BLEManager {
     }
   }
 
+  Future<void> testImmobiliserCode(int code) async {
+    if (_1984CodeCharacteristic != null) {
+      await _1984CodeCharacteristic!
+          .write(convertIntToBytesLE(code), withoutResponse: false);
+    }
+  }
+
   Future<void> reset1984ImmobiliserCodeRead() async {
     if (_1984CodeCharacteristic != null) {
       await _1984CodeCharacteristic!

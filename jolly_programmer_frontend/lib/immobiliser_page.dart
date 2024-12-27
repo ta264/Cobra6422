@@ -66,6 +66,43 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
     );
   }
 
+  // Function to show the Test Code dialog
+  void _showTestCodeDialog() {
+    final TextEditingController codeController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Test Immobiliser Code'),
+        content: TextField(
+          controller: codeController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            labelText: 'Enter Code',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Close the dialog
+            },
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final int? code = int.tryParse(codeController.text);
+              if (code != null) {
+                widget.bleManager.testImmobiliserCode(code);
+              }
+              Navigator.of(context).pop(); // Close the dialog
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   // Pull-to-refresh function
   Future<void> _refreshData() async {
     await widget.bleManager.refreshData();
@@ -103,7 +140,7 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const Text(
-                            'Current Immobiliser Code',
+                            'Paired Immobiliser Code',
                             style: TextStyle(fontSize: 18),
                             textAlign: TextAlign.center,
                           ),
@@ -144,7 +181,6 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
                           labelText: 'New Code',
                         ),
                         onChanged: (value) {
-                          // Update the immobiliser code as the user types
                           setState(() {
                             _newImmobiliserCode = int.tryParse(value) ?? 0;
                           });
@@ -153,14 +189,9 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
                       const SizedBox(height: 10),
                       ElevatedButton(
                         onPressed: () {
-                          // Write the new immobiliser code
                           widget.bleManager
                               .writeNewImmobiliserCode(_newImmobiliserCode);
-
-                          // Clear the input box
                           _controller.clear();
-
-                          // Remove the focus to hide the keyboard
                           FocusScope.of(context).unfocus();
                         },
                         child: const Text('Write'),
@@ -228,28 +259,43 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
                           stream: widget.bleManager.c1984CodeStream,
                           initialData: -100000,
                           builder: (context, snapshot) {
+                            List<Widget> children = [];
                             if (snapshot.data! == -100000) {
-                              return ElevatedButton(
-                                onPressed: _showCableWarningDialog,
-                                child: const Text('Read'),
-                              );
+                              children = [
+                                ElevatedButton(
+                                  onPressed: _showTestCodeDialog,
+                                  child: const Text('Test Code'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: _showCableWarningDialog,
+                                  child: const Text('Test All Codes'),
+                                )
+                              ];
+                            } else if (snapshot.data! > 0) {
+                              children = [
+                                ElevatedButton(
+                                  onPressed: () {
+                                    widget.bleManager
+                                        .reset1984ImmobiliserCodeRead();
+                                  },
+                                  child: const Text('Reset'),
+                                )
+                              ];
+                            } else {
+                              children = [
+                                ElevatedButton(
+                                  onPressed: () {
+                                    widget.bleManager
+                                        .reset1984ImmobiliserCodeRead();
+                                  },
+                                  child: const Text('Cancel'),
+                                )
+                              ];
                             }
-                            if (snapshot.data! > 0) {
-                              return ElevatedButton(
-                                onPressed: () {
-                                  widget.bleManager
-                                      .reset1984ImmobiliserCodeRead();
-                                },
-                                child: const Text('Reset'),
-                              );
-                            }
-                            return ElevatedButton(
-                              onPressed: () {
-                                widget.bleManager
-                                    .reset1984ImmobiliserCodeRead();
-                              },
-                              child: const Text('Cancel'),
-                            );
+                            return Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: children);
                           })
                     ],
                   ),

@@ -256,21 +256,34 @@ void c1984CodeWritten(BLEDevice central, BLECharacteristic characteristic) {
   Serial.println(value);
 
   Command1984 command = static_cast<Command1984>(value);
-  Serial.print("Cast to: ");
-  Serial.println(command);
 
-  switch (command) {
-    case START:
-      if (!c1984.run_brute_force()) {
+  if (command == START) {
+    if (!c1984.run_brute_force()) {
         c1984CodeCharacteristic.writeValue(ALREADY_MOBILISED);
-      }
-      break;
-    case RESET:
-      c1984.reset_brute_force();
+    }
+  }
+  else if (command == RESET) {
+    c1984.reset_brute_force();
+    c1984CodeCharacteristic.writeValue(START);
+  }
+  else if (command > 0) {
+    if(!c1984.prepare()) {
+      c1984CodeCharacteristic.writeValue(ALREADY_MOBILISED);
+      return;
+    }
+
+    delayMicroseconds(10000);
+
+    if(c1984.test_code(command)) {
+      Serial.println("Code worked");
+    }
+    else {
+      Serial.println("Code bad");
       c1984CodeCharacteristic.writeValue(START);
-      break;
-    default:
-      Serial.println("Unknown 1984 command");
+    }
+  }
+  else {
+    Serial.println("Unknown 1984 command");
   }
 }
 

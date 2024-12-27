@@ -24,6 +24,7 @@ class Cobra1984 {
     Status1984 get_status() {
       return status;
     }
+    bool prepare();
     bool run_brute_force();
     void reset_brute_force();
     bool test_code(int32_t code);
@@ -181,6 +182,8 @@ bool Cobra1984::test_code(int32_t code) {
     delayMicroseconds(1000);
   }
 
+  delayMicroseconds(5000);
+
   // check if the relay has activated
   PinStatus test = digitalRead(pTest);
   if (test == LOW) {
@@ -201,7 +204,7 @@ bool Cobra1984::test_next_code() {
   return test_code(currentCode);
 }
 
-bool Cobra1984::run_brute_force() {
+bool Cobra1984::prepare() {
   digitalWrite(pCode, LOW);
   pinMode(pCode, OUTPUT);
   pinMode(pTest, INPUT_PULLUP);
@@ -209,6 +212,12 @@ bool Cobra1984::run_brute_force() {
   PinStatus test = digitalRead(pTest);
   if (test == LOW) {
     Serial.println("Error: 1984 already mobilised.  Power cycle it and try again.");
+    return false;
+  }
+}
+
+bool Cobra1984::run_brute_force() {
+  if (!prepare()) {
     return false;
   }
 
