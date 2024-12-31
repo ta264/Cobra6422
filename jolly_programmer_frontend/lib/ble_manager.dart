@@ -99,8 +99,8 @@ class BLEManager {
     FlutterBluePlus.scanResults.listen((results) async {
       if (results.isNotEmpty) {
         final device = results.first.device;
-        await _connectToDevice(device);
         FlutterBluePlus.stopScan();
+        await _connectToDevice(device);
       }
     });
   }
