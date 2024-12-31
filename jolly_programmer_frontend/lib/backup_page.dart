@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'ble_manager.dart';
@@ -15,9 +16,9 @@ class BackupPage extends StatefulWidget {
 
 String formatCobraValue(List<int> hexBytes) {
   List<String> formattedLines = [];
-  for (int i = 0; i < hexBytes.length; i += 32) {
+  for (int i = 0; i < hexBytes.length; i += 16) {
     List<int> chunk = hexBytes.sublist(
-        i, i + 32 > hexBytes.length ? hexBytes.length : i + 32);
+        i, i + 16 > hexBytes.length ? hexBytes.length : i + 16);
     String formattedChunk = chunk
         .map((e) => e.toRadixString(16).padLeft(2, '0').toUpperCase())
         .join('')
@@ -127,6 +128,13 @@ class BackupPageState extends State<BackupPage> {
                     stream: widget.bleManager.eepromStream,
                     initialData: widget.bleManager.latestEepromValue,
                     builder: (context, snapshot) {
+                      String text = 'Reading data...';
+                      TextStyle style = const TextStyle(fontSize: 16);
+                      if (snapshot.data!.isNotEmpty) {
+                        text = formatCobraValue(snapshot.data!);
+                        style = GoogleFonts.sourceCodePro(fontSize: 16);
+                      }
+                      
                       return Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -135,12 +143,9 @@ class BackupPageState extends State<BackupPage> {
                             style: TextStyle(fontSize: 18),
                           ),
                           const SizedBox(height: 10),
-                          Text(
-                            snapshot.data!.isNotEmpty
-                                ? formatCobraValue(snapshot.data!)
-                                : 'Reading data...',
+                          Text(text,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 16),
+                            style: style
                           ),
                         ],
                       );

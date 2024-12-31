@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'ble_manager.dart';
 
 class TouchKeysPage extends StatefulWidget {
@@ -54,9 +55,12 @@ class TouchKeysPageState extends State<TouchKeysPage> {
                     stream: widget.bleManager.latestCobraValueStream,
                     initialData: widget.bleManager.latestCobraValue,
                     builder: (context, snapshot) {
-                      String text = snapshot.data!.isNotEmpty
-                          ? formatCobraValue(snapshot.data!)
-                          : 'Reading data...';
+                      String text = 'Reading data...';
+                      TextStyle style = const TextStyle(fontSize: 16);
+                      if (snapshot.data!.isNotEmpty) {
+                        text = formatCobraValue(snapshot.data!);
+                        style = GoogleFonts.sourceCodePro(fontSize: 16);
+                      }
                       return Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -68,7 +72,7 @@ class TouchKeysPageState extends State<TouchKeysPage> {
                           Text(
                             text,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 16),
+                            style: style
                           ),
                         ],
                       );
@@ -109,7 +113,7 @@ class TouchKeysPageState extends State<TouchKeysPage> {
                                       child: Text(
                                         formatCobraValue(key),
                                         textAlign: TextAlign.center,
-                                        style: const TextStyle(fontSize: 16),
+                                        style: GoogleFonts.sourceCodePro(fontSize: 16),
                                       ),
                                     );
                                   }).toList()

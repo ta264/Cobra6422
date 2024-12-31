@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 import 'dart:async';
 
@@ -25,6 +27,7 @@ class BLEManager {
   bool _isReconnecting = false;
   final Duration _reconnectDelay = Duration(seconds: 1);
 
+  BluetoothDevice? _device;
   BluetoothDevice? _connectedDevice;
   List<BluetoothService> _services = [];
 
@@ -95,39 +98,52 @@ class BLEManager {
     }
 
     // Start scanning for BLE devices
-    FlutterBluePlus.startScan(withServices: [Guid(COBRA_6422_SERVICE_UUID)]);
-    FlutterBluePlus.scanResults.listen((results) async {
+    var subscription = FlutterBluePlus.scanResults.listen((results) async {
       if (results.isNotEmpty) {
-        final device = results.first.device;
-        FlutterBluePlus.stopScan();
-        await _connectToDevice(device);
+        print("found device");
+        _device = results.first.device;
+        await FlutterBluePlus.stopScan();
       }
     });
+    FlutterBluePlus.cancelWhenScanComplete(subscription);
+
+    await FlutterBluePlus.startScan(withServices: [Guid(COBRA_6422_SERVICE_UUID)]);
+
+    await FlutterBluePlus.isScanning.where((val) => val == false).first;
+
+    await _connectToDevice();
   }
 
   // Connect to a BLE device and monitor connection state
-  Future<void> _connectToDevice(BluetoothDevice device) async {
+  Future<void> _connectToDevice() async {
+    if (_device == null) {
+      await _attemptReconnect();
+    }
+
     try {
-      await device.connect();
-      _connectedDevice = device;
+      await _device!.connect();
+      _connectedDevice = _device;
 
       // Listen for connection state changes
-      _connectedDevice!.connectionState.listen((state) {
+      var subscription = _connectedDevice!.connectionState.listen((state) async {
         if (state == BluetoothConnectionState.connected) {
           _connectionStateController.add(true); // Emit connected state
           _isReconnecting = false;
-          _discoverServices();
+          await _discoverServices();
         } else if (state == BluetoothConnectionState.disconnected) {
           _connectedDevice = null;
+          resetStreams();
           _connectionStateController.add(false); // Emit disconnected state
-          _attemptReconnect(); // Attempt to reconnect on disconnection
+          await _attemptReconnect(); // Attempt to reconnect on disconnection
         }
       });
+
+      _connectedDevice!.cancelWhenDisconnected(subscription, delayed: true);
     } catch (e) {
-      print('Failed to connect: $e');
       _connectedDevice = null;
+      resetStreams();
       _connectionStateController.add(false); // Emit disconnected on failure
-      _attemptReconnect(); // Attempt to reconnect on connection failure
+      await _attemptReconnect(); // Attempt to reconnect on connection failure
     }
   }
 
@@ -163,7 +179,7 @@ class BLEManager {
   Future<void> _discoverServices() async {
     if (_connectedDevice != null) {
       _services = await _connectedDevice!.discoverServices();
-      _cacheCharacteristics();
+      await _cacheCharacteristics();
     }
   }
 
@@ -184,7 +200,7 @@ class BLEManager {
   }
 
   // Cache the characteristics for future use
-  void _cacheCharacteristics() {
+  Future<void> _cacheCharacteristics() async {
     _programmerTouchKeyCharacteristic = _findCharacteristic(
         TOUCHKEY_SERVICE_UUID, TOUCHKEY_READ_CHARACTERISTIC_UUID);
     _cobraTouchKeyCharacteristic = _findCharacteristic(
@@ -197,11 +213,11 @@ class BLEManager {
         COBRA_1984_SERVICE_UUID, C1984_CODE_CHARACTERISTIC_UUID);
 
     // Subscribe to characteristics after caching them
-    _subscribeToProgrammerTouchKeyCharacteristic();
-    _subscribeToCobraTouchKeyCharacteristic();
-    _subscribeToImmobiliserCharacteristic();
-    _subscribeTo1984CodeCharacteristic();
-    _subscribeToEepromCharacteristic();
+    await _subscribeToProgrammerTouchKeyCharacteristic();
+    await _subscribeToCobraTouchKeyCharacteristic();
+    await _subscribeToImmobiliserCharacteristic();
+    await _subscribeTo1984CodeCharacteristic();
+    await _subscribeToEepromCharacteristic();
   }
 
   // Subscribe to the cobraTouchKey characteristic
@@ -252,7 +268,7 @@ class BLEManager {
   Future<void> _subscribeToEepromCharacteristic() async {
     if (_eepromCharacteristic != null) {
       final subscription =
-          _eepromCharacteristic!.onValueReceived.listen((value) {
+          _eepromCharacteristic!.lastValueStream.listen((value) {
         if (value.isNotEmpty) {
           _latestEepromValue = value;
           _eepromController
@@ -263,7 +279,18 @@ class BLEManager {
       _connectedDevice!.cancelWhenDisconnected(subscription);
 
       await _eepromCharacteristic!.setNotifyValue(true);
+      // A bodge, but on windows the push from the programmer triggered by the subscription
+      // doesn't get caught.  Read again, this will trigger lastValueStream listener
+      if (Platform.isWindows) {
+        await _eepromCharacteristic!.read();
+      }
     }
+  }
+
+  void resetStreams() {
+    _latestCobraValueController.add([]);
+    _immobiliserController.add(0);
+    _eepromController.add([]);
   }
 
   // resubscribe to trigger refresh
@@ -272,10 +299,8 @@ class BLEManager {
       await _eepromCharacteristic!
           .setNotifyValue(false); // Enable notifications
 
-      _latestCobraValueController.add([]);
-      _immobiliserController.add(0);
-      _eepromController.add([]);
-
+      resetStreams();
+      
       await _subscribeToEepromCharacteristic();
     }
   }
