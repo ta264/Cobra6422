@@ -49,7 +49,9 @@ class BackupPageState extends State<BackupPage> {
         return;
       }
 
-      if (!Platform.isAndroid) {
+      // on android and ios, saveFile writes the file.  Otherwise we have
+      // to write it ourselves.
+      if (!(Platform.isAndroid || Platform.isIOS)) {
         File file = File(outputFile);
         await file.writeAsBytes(eepromData);
       }
