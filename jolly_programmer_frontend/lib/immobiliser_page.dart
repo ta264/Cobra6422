@@ -12,14 +12,12 @@ class ImmobiliserPage extends StatefulWidget {
 
 class ImmobiliserPageState extends State<ImmobiliserPage> {
   final TextEditingController _controller = TextEditingController();
-  final FocusNode _focusNode = FocusNode();
   int _newImmobiliserCode = 0;
   bool _isEditing = false;
 
   @override
   void dispose() {
     _controller.dispose();
-    _focusNode.dispose();
     super.dispose();
   }
 
@@ -72,25 +70,33 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
   // Function to show the Test Code dialog
   void _showTestCodeDialog() {
     final TextEditingController codeController = TextEditingController();
-    final FocusNode codeFocusNode = FocusNode();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Test Immobiliser Code'),
-        content: TextField(
-          controller: codeController,
-          focusNode: codeFocusNode,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            labelText: 'Enter Code',
-          ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Please ensure the additional cable is connected to the 1984 immobiliser in the engine bay before proceeding.',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: codeController,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Enter Code',
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.of(context).pop(); // Close the dialog
-              codeFocusNode.dispose();
             },
             child: const Text('Cancel'),
           ),
@@ -101,15 +107,12 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
                 widget.bleManager.testImmobiliserCode(code);
               }
               Navigator.of(context).pop(); // Close the dialog
-              codeFocusNode.dispose();
             },
             child: const Text('OK'),
           ),
         ],
       ),
-    ).then((_) {
-      codeFocusNode.requestFocus();
-    });
+    );
   }
 
   // Pull-to-refresh function
@@ -157,7 +160,7 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
                           if (_isEditing)
                             TextField(
                               controller: _controller,
-                              focusNode: _focusNode,
+                              autofocus: true,
                               keyboardType: TextInputType.number,
                               decoration: const InputDecoration(
                                 border: OutlineInputBorder(),
@@ -189,7 +192,6 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
                                       _isEditing = false;
                                     });
                                     _controller.clear();
-                                    _focusNode.unfocus();
                                   },
                                   child: const Text('Cancel'),
                                 ),
@@ -201,7 +203,6 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
                                       _isEditing = false;
                                     });
                                     _controller.clear();
-                                    _focusNode.unfocus();
                                   },
                                   child: const Text('Write'),
                                 ),
@@ -214,7 +215,6 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
                                   _isEditing = true;
                                   _controller.text = text;
                                 });
-                                _focusNode.requestFocus();
                               },
                               child: const Text('Edit'),
                             ),
