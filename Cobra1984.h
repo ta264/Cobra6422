@@ -177,12 +177,10 @@ bool Cobra1984::test_code(int32_t code) {
   getBits(data, bits);
 
   // the code needs to be sent 3 times for the 1984 to recognise it, with a 1ms delay between each
-  for (int p = 0; p < 3; p++) {
+  for (int p = 0; p < 6; p++) {
     emitCode(bits);
     delayMicroseconds(1000);
   }
-
-  delayMicroseconds(5000);
 
   // check if the relay has activated
   PinStatus test = digitalRead(pTest);
