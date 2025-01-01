@@ -10,7 +10,7 @@ on:
 # on: push    # Default will running for every branch.
     
 jobs:
-  build:
+  android:
     # This job will run on ubuntu virtual machine
     runs-on: ubuntu-latest
     steps:
@@ -26,22 +26,12 @@ jobs:
     - uses: subosito/flutter-action@v1
       with:
         channel: 'stable' # 'dev', 'alpha', default to: 'stable'
-        # flutter-version: '1.12.x' # you can also specify exact version of flutter
     
     # Get flutter dependencies.
     - run: |
         cd jolly_programmer_frontend
         flutter pub get
-    
-    # Check for any formatting issues in the code.
-    #- run: flutter format --set-exit-if-changed .
-    
-    # Statically analyze the Dart code for any errors.
-    # - run: flutter analyze .
-    
-    # Run widget tests for our flutter project.
-    #- run: flutter test
-    
+
     # Build apk.
     - run: |
         cd jolly_programmer_frontend
@@ -52,3 +42,42 @@ jobs:
       with:
         name: release-apk
         path: jolly_programmer_frontend/build/app/outputs/apk/release/app-release.apk
+
+  windows:
+    # This job will run on ubuntu virtual machine
+    runs-on: windows-latest
+    steps:
+
+    # Setup Java environment in order to build the Android app.
+    - uses: actions/checkout@v4
+    - uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '18.x'
+
+    # Setup the flutter environment.
+    - uses: subosito/flutter-action@v1
+      with:
+        channel: 'stable' # 'dev', 'alpha', default to: 'stable'
+
+    # Get flutter dependencies.
+    - run: |
+        cd jolly_programmer_frontend
+        flutter pub get
+
+    # Build apk.
+    - run: |
+        cd jolly_programmer_frontend
+        flutter build windows --release
+        ls -R build/windows/x64/runner
+    # Upload generated apk to the artifacts.
+    - name: Archive Release
+      uses: thedoctor0/zip-release@master
+      with:
+        type: 'zip'
+        filename: win64.zip
+        directory: jolly_programmer_frontend/build/windows/x64/runner/Release
+    - uses: actions/upload-artifact@v4
+      with:
+        name: release-win64
+        path: jolly_programmer_frontend/build/windows/x64/runner/Release/win64.zip
