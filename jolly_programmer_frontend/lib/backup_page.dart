@@ -16,9 +16,9 @@ class BackupPage extends StatefulWidget {
 
 String formatCobraValue(List<int> hexBytes) {
   List<String> formattedLines = [];
-  for (int i = 0; i < hexBytes.length; i += 16) {
-    List<int> chunk = hexBytes.sublist(
-        i, i + 16 > hexBytes.length ? hexBytes.length : i + 16);
+  for (int i = 0; i < hexBytes.length; i += 8) {
+    List<int> chunk =
+        hexBytes.sublist(i, i + 8 > hexBytes.length ? hexBytes.length : i + 8);
     String formattedChunk = chunk
         .map((e) => e.toRadixString(16).padLeft(2, '0').toUpperCase())
         .join('')
@@ -132,9 +132,9 @@ class BackupPageState extends State<BackupPage> {
                       TextStyle style = const TextStyle(fontSize: 16);
                       if (snapshot.data!.isNotEmpty) {
                         text = formatCobraValue(snapshot.data!);
-                        style = GoogleFonts.sourceCodePro(fontSize: 16);
+                        style = GoogleFonts.robotoMono(fontSize: 16);
                       }
-                      
+
                       return Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -143,10 +143,7 @@ class BackupPageState extends State<BackupPage> {
                             style: TextStyle(fontSize: 18),
                           ),
                           const SizedBox(height: 10),
-                          Text(text,
-                            textAlign: TextAlign.center,
-                            style: style
-                          ),
+                          Text(text, textAlign: TextAlign.center, style: style),
                         ],
                       );
                     },

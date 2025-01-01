@@ -59,7 +59,7 @@ class TouchKeysPageState extends State<TouchKeysPage> {
                       TextStyle style = const TextStyle(fontSize: 16);
                       if (snapshot.data!.isNotEmpty) {
                         text = formatCobraValue(snapshot.data!);
-                        style = GoogleFonts.sourceCodePro(fontSize: 16);
+                        style = GoogleFonts.robotoMono(fontSize: 16);
                       }
                       return Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -69,11 +69,7 @@ class TouchKeysPageState extends State<TouchKeysPage> {
                             style: TextStyle(fontSize: 18),
                           ),
                           const SizedBox(height: 10),
-                          Text(
-                            text,
-                            textAlign: TextAlign.center,
-                            style: style
-                          ),
+                          Text(text, textAlign: TextAlign.center, style: style),
                         ],
                       );
                     },
@@ -113,7 +109,8 @@ class TouchKeysPageState extends State<TouchKeysPage> {
                                       child: Text(
                                         formatCobraValue(key),
                                         textAlign: TextAlign.center,
-                                        style: GoogleFonts.sourceCodePro(fontSize: 16),
+                                        style: GoogleFonts.robotoMono(
+                                            fontSize: 16),
                                       ),
                                     );
                                   }).toList()
