@@ -28,8 +28,8 @@ Cobra6422 c6422(pCS, pCLK, pDI, pDO, pProg);
 const int pTouchKey = 2;
 OneWire net(pTouchKey);
 
-const int pCode = 5;
-const int pTest = 6;
+const int pCode = A1;
+const int pTest = A0;
 Cobra1984 c1984(pCode, pTest);
 
 // Touchkey service to read new touchkeys for writing to cobra
