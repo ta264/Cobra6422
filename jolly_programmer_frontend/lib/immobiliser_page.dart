@@ -12,11 +12,14 @@ class ImmobiliserPage extends StatefulWidget {
 
 class ImmobiliserPageState extends State<ImmobiliserPage> {
   final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
   int _newImmobiliserCode = 0;
+  bool _isEditing = false;
 
   @override
   void dispose() {
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -69,12 +72,14 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
   // Function to show the Test Code dialog
   void _showTestCodeDialog() {
     final TextEditingController codeController = TextEditingController();
+    final FocusNode codeFocusNode = FocusNode();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Test Immobiliser Code'),
         content: TextField(
           controller: codeController,
+          focusNode: codeFocusNode,
           keyboardType: TextInputType.number,
           decoration: const InputDecoration(
             border: OutlineInputBorder(),
@@ -85,6 +90,7 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop(); // Close the dialog
+              codeFocusNode.dispose();
             },
             child: const Text('Cancel'),
           ),
@@ -95,12 +101,15 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
                 widget.bleManager.testImmobiliserCode(code);
               }
               Navigator.of(context).pop(); // Close the dialog
+              codeFocusNode.dispose();
             },
             child: const Text('OK'),
           ),
         ],
       ),
-    );
+    ).then((_) {
+      codeFocusNode.requestFocus();
+    });
   }
 
   // Pull-to-refresh function
@@ -118,7 +127,7 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
         onRefresh: _refreshData, // Pull-to-refresh logic
         child: ListView(
           children: [
-            // Top card to display current immobiliser code
+            // Combined card for displaying and editing immobiliser code
             SizedBox(
               width: double.infinity,
               child: Card(
@@ -145,58 +154,73 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 10),
-                          Text(
-                            text,
-                            style: style,
-                            textAlign: TextAlign.center,
-                          ),
+                          if (_isEditing)
+                            TextField(
+                              controller: _controller,
+                              focusNode: _focusNode,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                labelText: 'New Code',
+                              ),
+                              style: const TextStyle(
+                                  fontSize: 32, fontWeight: FontWeight.bold),
+                              onChanged: (value) {
+                                setState(() {
+                                  _newImmobiliserCode =
+                                      int.tryParse(value) ?? 0;
+                                });
+                              },
+                            )
+                          else
+                            Text(
+                              text,
+                              style: style,
+                              textAlign: TextAlign.center,
+                            ),
+                          const SizedBox(height: 10),
+                          if (_isEditing)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                ElevatedButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _isEditing = false;
+                                    });
+                                    _controller.clear();
+                                    _focusNode.unfocus();
+                                  },
+                                  child: const Text('Cancel'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    widget.bleManager.writeNewImmobiliserCode(
+                                        _newImmobiliserCode);
+                                    setState(() {
+                                      _isEditing = false;
+                                    });
+                                    _controller.clear();
+                                    _focusNode.unfocus();
+                                  },
+                                  child: const Text('Write'),
+                                ),
+                              ],
+                            )
+                          else
+                            ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _isEditing = true;
+                                  _controller.text = text;
+                                });
+                                _focusNode.requestFocus();
+                              },
+                              child: const Text('Edit'),
+                            ),
                         ],
                       );
                     },
-                  ),
-                ),
-              ),
-            ),
-
-            // Card with numeric input box for entering a new immobiliser code
-            SizedBox(
-              width: double.infinity,
-              child: Card(
-                margin: const EdgeInsets.all(10),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      const Text(
-                        'Write Immobiliser Code',
-                        style: TextStyle(fontSize: 18),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: _controller,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          labelText: 'New Code',
-                        ),
-                        onChanged: (value) {
-                          setState(() {
-                            _newImmobiliserCode = int.tryParse(value) ?? 0;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                      ElevatedButton(
-                        onPressed: () {
-                          widget.bleManager
-                              .writeNewImmobiliserCode(_newImmobiliserCode);
-                          _controller.clear();
-                          FocusScope.of(context).unfocus();
-                        },
-                        child: const Text('Write'),
-                      ),
-                    ],
                   ),
                 ),
               ),
