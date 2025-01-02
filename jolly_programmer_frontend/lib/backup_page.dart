@@ -29,6 +29,16 @@ String formatCobraValue(List<int> hexBytes) {
 }
 
 class BackupPageState extends State<BackupPage> {
+  FloatingActionButton? getRefreshButton() {
+    if (Platform.isAndroid || Platform.isIOS) {
+      return null;
+    }
+    return FloatingActionButton(
+      onPressed: _refreshData,
+      child: const Icon(Icons.refresh),
+    );
+  }
+
   Future<void> _refreshData() async {
     await widget.bleManager.refreshData();
   }
@@ -188,6 +198,7 @@ class BackupPageState extends State<BackupPage> {
           ],
         ),
       ),
+      floatingActionButton: getRefreshButton(),
     );
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'ble_manager.dart';
 
@@ -112,6 +114,16 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
           ),
         ],
       ),
+    );
+  }
+
+  FloatingActionButton? getRefreshButton() {
+    if (Platform.isAndroid || Platform.isIOS) {
+      return null;
+    }
+    return FloatingActionButton(
+      onPressed: _refreshData,
+      child: const Icon(Icons.refresh),
     );
   }
 
@@ -329,6 +341,7 @@ class ImmobiliserPageState extends State<ImmobiliserPage> {
           ],
         ),
       ),
+      floatingActionButton: getRefreshButton(),
     );
   }
 }
